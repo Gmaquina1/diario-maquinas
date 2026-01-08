@@ -730,9 +730,12 @@ function loadDB(){
       { id: uid("m"), name:"Escavadeira", type:"escavadeira", model:"", status:"disponivel", notes:"" },
     ],
     users: [
-      { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
-      { id: uid("u"), name:"Operador 1", username:"op1", password:"1234", role:"operator", active:true, machineId:null },
-    ],
+  { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
+
+  { id: uid("u"), name:"João Pedro", username:"Joaopedro", password:"4774", role:"operator", active:true, machineId:null },
+  { id: uid("u"), name:"Gabriel",    username:"Gabriel",   password:"7107", role:"operator", active:true, machineId:null },
+  { id: uid("u"), name:"Baiano",      username:"Baiano",    password:"7510", role:"operator", active:true, machineId:null },
+],
     demandsByUser: {}, // username -> demand
     rentals: [],
     drafts: {},        // key username__date -> draft
@@ -748,7 +751,7 @@ function saveDB(){
 function ensureAdmin(){
   db.users = Array.isArray(db.users) ? db.users : [];
 
-  const hasAdmin = db.users.some(u => u && u.username === "admin");
+const hasAdmin = db.users.some(u => u && normalizeLogin(u.username) === "admin");
   if(!hasAdmin){
     db.users.unshift({
       id: uid("u"),
@@ -792,9 +795,20 @@ function todayStr(){
 }
 function nowISO(){ return new Date().toISOString(); }
 
-function findUserByUsername(username){
-  return db.users.find(u => u.username === username) || null;
+function normalizeLogin(s){
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")              // separa letras/acentos
+    .replace(/[\u0300-\u036f]/g,"")// remove acentos
+    .replace(/\s+/g,"")            // remove espaços
+    .trim();
 }
+
+function findUserByUsername(username){
+  const nu = normalizeLogin(username);
+  return db.users.find(u => normalizeLogin(u.username) === nu) || null;
+}
+
 function findUserById(id){
   return db.users.find(u => u.id === id) || null;
 }
@@ -1691,9 +1705,22 @@ function saveUser(){
   if(!username){ toast("Informe o usuário (login)"); return; }
   if(!editingUserId && !pass.trim()){ toast("Defina uma senha"); return; }
 
-  // username único
-  const exists = db.users.find(u => u.username===username && u.id!==editingUserId);
-  if(exists){ toast("Usuário (login) já existe"); return; }
+// username único (considera acento, espaços e maiúsculas/minúsculas)
+const nu = normalizeLogin(username);
+const exists = db.users.find(u =>
+  normalizeLogin(u.username) === nu && u.id !== editingUserId
+);
+if(exists){
+  toast("Usuário (login) já existe (mesmo nome, só muda acento/caixa/espaço)");
+  return;
+}
+
+// opcional: bloquear alguém criar login que “vira admin” na normalização
+if(nu === "admin" && username !== "admin"){
+  toast("Esse login conflita com 'admin'. Escolha outro.");
+  return;
+}
+
 
   if(editingUserId){
     const u = findUserById(editingUserId);
@@ -2152,3 +2179,4 @@ $("loginUser").addEventListener("keydown",(e)=>{
 
 </body>
 </html>
+
