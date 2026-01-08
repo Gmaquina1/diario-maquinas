@@ -58,6 +58,8 @@
     th,td{border-bottom:1px solid var(--line);padding:10px;font-size:12px;vertical-align:top;text-align:left}
     th{background:#fafafa;color:var(--muted)}
     tr:last-child td{border-bottom:none}
+
+    /* Wizard (celular: vira "páginas") */
     .wizardBar{
       display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;
       padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;
@@ -80,6 +82,8 @@
     @media(max-width:720px){
       .page .card{min-height: calc(100vh - 170px);}
     }
+
+    /* Modal */
     .modalBack{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:300;align-items:center;justify-content:center;padding:14px}
     .modal{max-width:900px;width:100%;background:#fff;border-radius:14px;border:1px solid var(--line);box-shadow:var(--shadow);padding:14px;max-height:85vh;overflow:auto}
     .modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -94,7 +98,7 @@
       <div class="logo"></div>
       <div>
         <h1>Diário de Máquinas</h1>
-        <small>Local (neste aparelho) • Admin + Operador</small>
+        <small>Sincronizado (Supabase) • Operador em páginas (celular)</small>
       </div>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -112,7 +116,7 @@
     <div class="row">
       <div>
         <label>Usuário</label>
-        <input id="loginUser" autocomplete="username" placeholder="ex.: admin / joao"/>
+        <input id="loginUser" autocomplete="username" placeholder="ex.: op1 / admin"/>
       </div>
       <div>
         <label>Senha</label>
@@ -128,15 +132,16 @@
         </select>
       </div>
       <div class="muted" style="align-self:end">
-        Admin padrão: <b>admin / 1234</b>
+        Dica: operador abre pelo link do seu site normal.
       </div>
     </div>
     <div class="rightBtns">
       <button class="btn primary" id="btnLogin" type="button">Entrar</button>
     </div>
+    <div class="muted" id="connState">Conexão: —</div>
   </div>
 
-  <!-- OPERADOR -->
+  <!-- OPERADOR (WIZARD) -->
   <div id="viewOperator" style="display:none">
 
     <div class="card">
@@ -464,6 +469,7 @@
 
   <!-- ADMIN -->
   <div id="viewAdmin" style="display:none">
+
     <div class="card">
       <h2>Admin</h2>
       <div class="tabs">
@@ -473,6 +479,10 @@
         <div class="tab" data-tab="records">Registros</div>
         <div class="tab" data-tab="export">Exportar</div>
       </div>
+      <div class="rightBtns" style="justify-content:flex-start">
+        <button class="btn primary" type="button" id="btnForceRefresh">Atualizar do banco</button>
+      </div>
+      <div class="muted" id="adminConn">Conexão: —</div>
     </div>
 
     <!-- DASH -->
@@ -511,7 +521,7 @@
       </div>
       <div class="row">
         <div class="notice"><b>Avarias graves:</b> <span id="kpi_grave">0</span></div>
-        <div class="notice"><b>Máquinas sem diário no período:</b> <span id="kpi_sem">0</span></div>
+        <div class="notice"><b>Máquinas sem diário hoje:</b> <span id="kpi_sem">0</span></div>
       </div>
     </div>
 
@@ -568,7 +578,7 @@
           <tbody id="machines_body"></tbody>
         </table>
       </div>
-      <div class="muted">Cadastre máquinas e depois vincule cada operador a uma máquina na aba “Operadores / Logins”.</div>
+      <div class="muted">Tudo aqui fica no banco (sincroniza).</div>
     </div>
 
     <!-- USERS -->
@@ -636,7 +646,7 @@
           <tbody id="users_body"></tbody>
         </table>
       </div>
-      <div class="muted">Você cria operador, muda senha, vincula máquina, desativa.</div>
+      <div class="muted">Logins no banco (sincroniza).</div>
     </div>
 
     <!-- RECORDS -->
@@ -676,9 +686,8 @@
       <h2>Exportar</h2>
       <div class="rightBtns" style="justify-content:flex-start">
         <button class="btn primary" type="button" id="btnExportCSV">Exportar CSV</button>
-        <button class="btn danger" type="button" id="btnWipe">Apagar tudo (local)</button>
       </div>
-      <div class="muted">Exporta os registros do armazenamento local deste aparelho.</div>
+      <div class="muted">Exporta os registros do banco.</div>
     </div>
 
   </div>
@@ -702,16 +711,20 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 /* =======================
-   STORAGE
+   SUPABASE CONFIG (SEU)
    ======================= */
-const LS_KEY = "diario_maquinas_pro_v1";
-const LS_SESSION = "diario_session_pro_v1";
+const SUPABASE_URL = "https://gcfrpuaalryjrkjfgppe.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_4jtV6I_Ihuos3r54n3x0kg_Xw34yyza";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function uid(prefix="id"){
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
-}
+/* =======================
+   HELPERS
+   ======================= */
 function $(id){ return document.getElementById(id); }
 function esc(s){
   return String(s ?? "")
@@ -742,64 +755,43 @@ function normalizeLogin(s){
     .replace(/\s+/g,"")
     .trim();
 }
+function genId(){
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return "id_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+}
+async function fileToCompressedDataURL(file, maxW=900, quality=0.6){
+  if(!file) return null;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.src = url;
+  await img.decode();
 
-function loadDB(){
-  const raw = localStorage.getItem(LS_KEY);
-  if(raw){
-    try { return JSON.parse(raw); } catch(e){}
-  }
-  return {
-    version: 1,
-    machines: [
-      { id: uid("m"), name:"Motoniveladora", type:"motoniveladora", model:"", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira 7D Laranja", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira 7D Amarelo", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira D7", type:"trator", model:"", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Escavadeira 22t", type:"escavadeira", model:"", status:"disponivel", notes:"" },
-    ],
-    users: [
-      { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
-      { id: uid("u"), name:"João Pedro", username:"joao", password:"1234", role:"operator", active:true, machineId:null },
-    ],
-    demandsByUser: {},
-    rentals: [],
-    drafts: {},
-    records: []
-  };
-}
-let db = loadDB();
+  let w = img.width, h = img.height;
+  const ratio = Math.min(1, maxW / w);
+  w = Math.round(w * ratio);
+  h = Math.round(h * ratio);
 
-function saveDB(){
-  try{
-    localStorage.setItem(LS_KEY, JSON.stringify(db));
-  }catch(e){
-    console.error(e);
-    toast("⚠️ Memória cheia! Exporte o CSV e apague dados/fotos antigos.");
-  }
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+
+  return canvas.toDataURL("image/jpeg", quality);
 }
-function ensureAdmin(){
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const hasExactAdmin = db.users.some(u => u && normalizeLogin(u.username) === "admin");
-  if(!hasExactAdmin){
-    db.users.unshift({ id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null });
-    saveDB();
-  }
-}
-function findUserByUsername(username){
-  const nu = normalizeLogin(username);
-  return db.users.find(u => normalizeLogin(u.username) === nu) || null;
-}
-function findMachineById(id){
-  return db.machines.find(m => m.id === id) || null;
-}
-function machineName(id){
-  if(!id) return "—";
-  return findMachineById(id)?.name || "—";
+function showPreview(containerId, dataURL){
+  const box = $(containerId);
+  box.innerHTML = "";
+  if(!dataURL) return;
+  const im = document.createElement("img");
+  im.src = dataURL;
+  box.appendChild(im);
 }
 
 /* =======================
-   SESSION
+   SESSION (local)
    ======================= */
+const LS_SESSION = "diario_session_supabase_v1";
 let session = { username:null, role:null };
 
 function saveSession(){
@@ -812,6 +804,178 @@ function loadSession(){
 }
 function clearSession(){
   localStorage.removeItem(LS_SESSION);
+}
+
+/* =======================
+   DB CACHE (memória)
+   ======================= */
+let db = {
+  machines: [],
+  users: [],
+  demandByUser: {},   // username -> demand object
+  rentals: [],
+  drafts: {},         // key username__date -> draft.data
+  records: []         // array de records
+};
+
+function draftKey(username, date){ return `${username}__${date}`; }
+function machineName(id){
+  if(!id) return "—";
+  return db.machines.find(m=>m.id===id)?.name || "—";
+}
+
+/* =======================
+   SUPABASE LOADERS
+   ======================= */
+async function pingSupabase(){
+  const { error } = await sb.from("machines").select("id").limit(1);
+  return !error;
+}
+
+async function loadMachines(){
+  const { data, error } = await sb.from("machines").select("*").order("created_at", {ascending:true});
+  if(error) throw error;
+  db.machines = data || [];
+}
+async function loadUsers(){
+  const { data, error } = await sb.from("users").select("*").order("created_at", {ascending:true});
+  if(error) throw error;
+  db.users = data || [];
+}
+async function loadDemandFor(username){
+  const { data, error } = await sb.from("demands").select("*").eq("username", username).maybeSingle();
+  if(error) throw error;
+  db.demandByUser[username] = data ? {
+    type: data.type,
+    obraName: data.obra_name || "",
+    obraLocation: data.obra_location || "",
+    client: data.client || "",
+    location: data.location || "",
+    lastUsedISO: data.last_used_at || nowISO()
+  } : null;
+}
+async function loadActiveRentalFor(username){
+  const { data, error } = await sb.from("rentals")
+    .select("*")
+    .eq("username", username)
+    .eq("status", "ativa")
+    .order("start_at", {ascending:false})
+    .limit(1);
+  if(error) throw error;
+  return (data && data[0]) ? data[0] : null;
+}
+async function loadDraft(username, date){
+  const { data, error } = await sb.from("drafts").select("*").eq("username", username).eq("date", date).maybeSingle();
+  if(error) throw error;
+  if(data?.data){
+    db.drafts[draftKey(username,date)] = data.data;
+    return data.data;
+  }
+  delete db.drafts[draftKey(username,date)];
+  return null;
+}
+async function loadRecordsRange(from, to){
+  const { data, error } = await sb.from("records")
+    .select("*")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", {ascending:true});
+  if(error) throw error;
+  db.records = data || [];
+}
+
+/* =======================
+   SUPABASE WRITERS
+   ======================= */
+async function upsertDemand(username, d){
+  const row = {
+    username,
+    type: d.type,
+    obra_name: d.type==="obra" ? d.obraName : null,
+    obra_location: d.type==="obra" ? d.obraLocation : null,
+    client: d.type==="locacao" ? d.client : null,
+    location: d.type==="locacao" ? d.location : null,
+    last_used_at: new Date().toISOString()
+  };
+  const { error } = await sb.from("demands").upsert(row, { onConflict: "username" });
+  if(error) throw error;
+  db.demandByUser[username] = d;
+}
+
+async function ensureRentalIfLocacao(username, userMachineId, d){
+  if(d.type!=="locacao") return;
+  const r = await loadActiveRentalFor(username);
+  if(r) return;
+  const { error } = await sb.from("rentals").insert({
+    username,
+    machine_id: userMachineId || null,
+    client: d.client,
+    location: d.location,
+    status: "ativa",
+    start_at: new Date().toISOString()
+  });
+  if(error) throw error;
+}
+
+async function closeRental(username){
+  const r = await loadActiveRentalFor(username);
+  if(!r) return null;
+  const { error } = await sb.from("rentals")
+    .update({ status:"encerrada", end_at: new Date().toISOString() })
+    .eq("id", r.id);
+  if(error) throw error;
+  return true;
+}
+
+async function saveDraft(username, date, draftData){
+  const { error } = await sb.from("drafts").upsert({
+    username, date, data: draftData
+  }, { onConflict: "username,date" });
+  if(error) throw error;
+  db.drafts[draftKey(username,date)] = draftData;
+}
+
+async function deleteDraft(username, date){
+  const { error } = await sb.from("drafts").delete().eq("username", username).eq("date", date);
+  if(error) throw error;
+  delete db.drafts[draftKey(username,date)];
+}
+
+async function insertRecord(recordObj){
+  const hours = Number(recordObj.hoursWorked || 0);
+  const fuelLiters = recordObj.fuel?.yes ? Number(recordObj.fuel.liters||0) : 0;
+  const avSev = recordObj.avaria ? recordObj.avaria.severity : null;
+
+  const row = {
+    id: recordObj.id || genId(),
+    date: recordObj.date,
+    created_at: new Date().toISOString(),
+    username: recordObj.username,
+    operator_name: recordObj.operatorName,
+    machine_id: recordObj.machineId,
+    machine_name: recordObj.machineName,
+    hours_worked: Number.isFinite(hours) ? hours : 0,
+    fuel_liters: Number.isFinite(fuelLiters) ? fuelLiters : 0,
+    avaria_severity: avSev,
+    data: recordObj
+  };
+
+  const { error } = await sb.from("records").insert(row);
+  if(error) throw error;
+}
+
+/* =======================
+   AUTH helpers (banco)
+   ======================= */
+function findUserByUsername(username){
+  const nu = normalizeLogin(username);
+  return db.users.find(u => normalizeLogin(u.username) === nu) || null;
+}
+function findUserById(id){
+  return db.users.find(u => u.id === id) || null;
+}
+function findMachineById(id){
+  return db.machines.find(m => m.id === id) || null;
 }
 
 /* =======================
@@ -838,89 +1002,6 @@ function showAdmin(){
 }
 
 /* =======================
-   MODAL
-   ======================= */
-function openModal(title, sub, html){
-  $("modalTitle").textContent = title || "Detalhes";
-  $("modalSub").textContent = sub || "";
-  $("modalBody").innerHTML = html || "";
-  $("modalBack").style.display = "flex";
-}
-function closeModal(){
-  $("modalBack").style.display = "none";
-}
-
-/* =======================
-   AUTH
-   ======================= */
-function login(){
-  ensureAdmin();
-  const u = $("loginUser").value.trim();
-  const p = $("loginPass").value;
-  const user = findUserByUsername(u);
-  if(!user || !user.active){ toast("Usuário inválido ou inativo"); return; }
-  if(String(user.password) !== String(p)){ toast("Senha incorreta"); return; }
-
-  session = { username: user.username, role: user.role };
-  $("pillName").textContent = user.name || user.username;
-
-  if($("keepLogged").value === "sim") saveSession();
-  else clearSession();
-
-  if(user.role === "admin"){
-    showAdmin();
-    initAdmin();
-  }else{
-    showOperator();
-    initOperator();
-  }
-}
-function logout(){
-  session = { username:null, role:null };
-  clearSession();
-  showLogin();
-}
-
-/* =======================
-   IMAGEM (compressão)
-   ======================= */
-async function fileToCompressedDataURL(file, maxW=900, quality=0.6){
-  if(!file) return null;
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.src = url;
-  await img.decode();
-
-  let w = img.width, h = img.height;
-  const ratio = Math.min(1, maxW / w);
-  w = Math.round(w * ratio);
-  h = Math.round(h * ratio);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
-  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-  URL.revokeObjectURL(url);
-
-  return canvas.toDataURL("image/jpeg", quality);
-}
-function showPreview(containerId, dataURL){
-  const box = $(containerId);
-  box.innerHTML = "";
-  if(!dataURL) return;
-  const im = document.createElement("img");
-  im.src = dataURL;
-  box.appendChild(im);
-}
-
-/* =======================
-   DRAFTS
-   ======================= */
-function draftKey(username, date){ return `${normalizeLogin(username)}__${date}`; }
-function getDraft(username, date){ return db.drafts[draftKey(username,date)] || null; }
-function setDraft(username, date, draft){ db.drafts[draftKey(username,date)] = draft; saveDB(); }
-function clearDraft(username, date){ delete db.drafts[draftKey(username,date)]; saveDB(); }
-
-/* =======================
    WIZARD (Operador)
    ======================= */
 let currentStep = 1;
@@ -940,21 +1021,18 @@ function setStep(step){
     3: "Preencha no fim do dia e encerre"
   };
   $("wizHint").textContent = hints[step] || "—";
+
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
 /* =======================
-   DEMANDA / LOCAÇÃO
+   DEMANDA / LOCAÇÃO (UI)
    ======================= */
-function activeRentalForUser(username){
-  return db.rentals.find(r => normalizeLogin(r.username)===normalizeLogin(username) && r.status==="ativa") || null;
-}
-function formatDemand(d){
+function formatDemand(d, activeRental){
   if(!d) return "—";
   if(d.type==="obra") return `OBRA: ${d.obraName || "?"} — ${d.obraLocation || "?"}`;
   if(d.type==="locacao"){
-    const r = activeRentalForUser(session.username);
-    const st = r ? "ATIVA" : "—";
+    const st = activeRental ? "ATIVA" : "—";
     return `LOCAÇÃO (${st}): ${d.client || "?"} — ${d.location || "?"}`;
   }
   return "—";
@@ -979,26 +1057,26 @@ function setDemandUI(d){
   }else if(d?.type==="locacao"){
     $("locClient").value = d.client || "";
     $("locLocation").value = d.location || "";
+  }else{
+    $("obraName").value = "";
+    $("obraLocation").value = "";
+    $("locClient").value = "";
+    $("locLocation").value = "";
   }
   updateDemandSummary();
 }
-function updateDemandSummary(){
-  const saved = db.demandsByUser[normalizeLogin(session.username)] || null;
-  const d = demandFromUI() || saved;
-  $("demandSummary").innerHTML = `<b>Demanda atual:</b> ${esc(formatDemand(d))}`;
-}
-function updateDemandTypeUI(){
+async function updateDemandTypeUI(){
   const t = $("demandType").value;
   $("demandObra").style.display = (t==="obra") ? "" : "none";
   $("demandLocacao").style.display = (t==="locacao") ? "" : "none";
 
   if(t==="locacao"){
-    const r = activeRentalForUser(session.username);
+    const r = await loadActiveRentalFor(session.username);
     if(r){
       $("btnCloseRental").style.display = "";
-      $("demandStatus").innerHTML = `Locação: <span class="badge ok">ATIVA</span> • Início: <b>${esc(r.startISO.slice(0,10))}</b>`;
-      $("locClient").value = r.client;
-      $("locLocation").value = r.location;
+      $("demandStatus").innerHTML = `Locação: <span class="badge ok">ATIVA</span> • Início: <b>${esc(String(r.start_at).slice(0,10))}</b>`;
+      $("locClient").value = r.client || $("locClient").value;
+      $("locLocation").value = r.location || $("locLocation").value;
     }else{
       $("btnCloseRental").style.display = "none";
       $("demandStatus").innerHTML = `Locação: <span class="badge">Sem ativa</span>`;
@@ -1009,54 +1087,47 @@ function updateDemandTypeUI(){
   }
   updateDemandSummary();
 }
-function saveDemand(){
+function updateDemandSummary(){
+  const saved = db.demandByUser[session.username] || null;
+  const d = demandFromUI() || saved;
+  $("demandSummary").innerHTML = `<b>Demanda atual:</b> ${esc(formatDemand(d, null))}`;
+}
+async function saveDemand(){
   const d = demandFromUI();
   if(!d){ toast("Selecione tipo de demanda"); return; }
-
   if(d.type==="obra"){
     if(!d.obraName || !d.obraLocation){ toast("Preencha nome e localização da obra"); return; }
   }
   if(d.type==="locacao"){
     if(!d.client || !d.location){ toast("Preencha cliente e localização"); return; }
-    const r = activeRentalForUser(session.username);
-    if(!r){
-      const user = findUserByUsername(session.username);
-      db.rentals.push({
-        id: uid("rent"),
-        username: session.username,
-        machineId: user?.machineId || null,
-        client: d.client,
-        location: d.location,
-        startISO: nowISO(),
-        endISO: null,
-        status: "ativa"
-      });
-    }
   }
 
-  db.demandsByUser[normalizeLogin(session.username)] = d;
-  saveDB();
-  toast("Demanda salva");
-  updateDemandTypeUI();
+  await upsertDemand(session.username, d);
+
+  const user = findUserByUsername(session.username);
+  await ensureRentalIfLocacao(session.username, user?.machine_id, d);
+
+  toast("Demanda salva (sincronizada) ✅");
+  await updateDemandTypeUI();
 }
-function closeRental(){
-  const r = activeRentalForUser(session.username);
-  if(!r){ toast("Nenhuma locação ativa"); return; }
-  if(!confirm("Encerrar a locação agora?")) return;
-  r.status = "encerrada";
-  r.endISO = nowISO();
-  saveDB();
-  toast("Locação encerrada");
+async function closeRentalUI(){
+  const ok = confirm("Encerrar a locação agora?");
+  if(!ok) return;
+  const done = await closeRental(session.username);
+  if(!done){ toast("Nenhuma locação ativa"); return; }
 
-  const d = db.demandsByUser[normalizeLogin(session.username)];
-  if(d?.type==="locacao"){
-    delete db.demandsByUser[normalizeLogin(session.username)];
-    saveDB();
+  // limpa demanda se era locação
+  const current = db.demandByUser[session.username];
+  if(current?.type==="locacao"){
+    // remove do banco
+    await sb.from("demands").delete().eq("username", session.username);
+    db.demandByUser[session.username] = null;
   }
+
   $("demandType").value = "";
-  $("locClient").value = "";
-  $("locLocation").value = "";
-  updateDemandTypeUI();
+  setDemandUI(null);
+  toast("Locação encerrada ✅");
+  await updateDemandTypeUI();
 }
 
 /* =======================
@@ -1123,7 +1194,7 @@ function setFuelBlockVisible(){
 }
 function calcHours(){
   const date = $("opDate").value;
-  const d = getDraft(session.username, date);
+  const d = db.drafts[draftKey(session.username, date)] || null;
   const s = Number(d?.hmStart ?? NaN);
   const e = Number($("hm_end").value);
   if(Number.isFinite(s) && Number.isFinite(e) && e >= s){
@@ -1152,6 +1223,7 @@ function calcFuel(){
     $("fuel_lph").value = "";
   }
 }
+
 function lockStartFields(lock){
   $("hm_start").disabled = lock;
   $("hm_start_photo").disabled = lock;
@@ -1176,14 +1248,18 @@ function lockStartFields(lock){
 
   $("start_notes").disabled = lock;
 }
+
 function resetStartFields(){
   $("hm_start").value = "";
   $("hm_start_photo").value = "";
   $("hm_start_preview").innerHTML = "";
+
   $("ck_oil").value="OK"; $("ck_cool").value="OK"; $("ck_hyd").value="OK"; $("ck_leak").value="OK";
   $("ck_air").value="OK"; $("ck_track").value="OK"; $("ck_panel").value="OK"; $("ck_safe").value="OK";
+
   $("hasAvaria").value="nao";
   setAvariaEnabled(false);
+
   $("start_notes").value="";
 }
 function resetEndFields(){
@@ -1206,13 +1282,14 @@ function resetEndFields(){
   $("fuel_preview").innerHTML="";
   $("fuelBlock").style.display="none";
 }
+
 function updateTurnInfo(){
   const date = $("opDate").value;
-  const d = getDraft(session.username, date);
+  const d = db.drafts[draftKey(session.username, date)] || null;
   if(d){
     $("opTurnInfo").innerHTML =
       `<b>Turno:</b> <span class="badge ok">RODANDO</span><br>` +
-      `<b>Início:</b> ${esc(d.startedAtISO.slice(0,16).replace("T"," "))}<br>` +
+      `<b>Início:</b> ${esc(String(d.startedAtISO).slice(0,16).replace("T"," "))}<br>` +
       `<b>Horímetro inicial:</b> ${esc(d.hmStart)}`;
     $("endHint").innerHTML = `Turno iniciado. Preencha no fim do dia e clique <b>ENCERRAR TURNO</b>.`;
   }else{
@@ -1229,30 +1306,16 @@ async function startShift(){
 
   const user = findUserByUsername(session.username);
   if(!user || !user.active){ toast("Usuário inativo"); logout(); return; }
-  if(!user.machineId){ toast("Admin precisa vincular uma máquina ao seu login"); setStep(1); return; }
+  if(!user.machine_id){ toast("Admin precisa vincular uma máquina ao seu login"); setStep(1); return; }
 
-  const saved = db.demandsByUser[normalizeLogin(session.username)] || null;
+  const saved = db.demandByUser[session.username] || null;
   const d = demandFromUI() || saved;
   if(!d){ toast("Defina e salve a demanda"); setStep(1); return; }
   if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Demanda de obra incompleta"); setStep(1); return; }
   if(d.type==="locacao" && (!d.client || !d.location)){ toast("Demanda de locação incompleta"); setStep(1); return; }
 
-  if(d.type==="locacao"){
-    const r = activeRentalForUser(session.username);
-    if(!r){
-      db.rentals.push({
-        id: uid("rent"),
-        username: session.username,
-        machineId: user.machineId,
-        client: d.client,
-        location: d.location,
-        startISO: nowISO(),
-        endISO: null,
-        status: "ativa"
-      });
-      saveDB();
-    }
-  }
+  await upsertDemand(session.username, d);
+  await ensureRentalIfLocacao(session.username, user.machine_id, d);
 
   const hmStart = Number($("hm_start").value);
   if(!Number.isFinite(hmStart)){ toast("Preencha horímetro inicial"); return; }
@@ -1270,13 +1333,13 @@ async function startShift(){
   }
 
   const draft = {
-    id: uid("draft"),
+    id: genId(),
     date,
     startedAtISO: nowISO(),
     username: session.username,
     operatorName: user.name,
-    machineId: user.machineId,
-    machineName: machineName(user.machineId),
+    machineId: user.machine_id,
+    machineName: machineName(user.machine_id),
     demand: d,
     hmStart,
     hmStartPhoto,
@@ -1285,18 +1348,18 @@ async function startShift(){
     startNotes: $("start_notes").value.trim()
   };
 
-  setDraft(session.username, date, draft);
+  await saveDraft(session.username, date, draft);
 
   lockStartFields(true);
   enableEndFields(true);
   updateTurnInfo();
-  toast("Turno iniciado ✅");
+  toast("Bom trabalho! ✅ (sincronizado)");
   setStep(3);
 }
 
 async function finishShift(){
   const date = $("opDate").value;
-  const draft = getDraft(session.username, date);
+  const draft = db.drafts[draftKey(session.username, date)] || null;
   if(!draft){ toast("Inicie o turno primeiro"); setStep(2); return; }
 
   const hmEnd = Number($("hm_end").value);
@@ -1323,7 +1386,7 @@ async function finishShift(){
   }
 
   const record = {
-    id: uid("rec"),
+    id: genId(),
     date,
     createdAtISO: nowISO(),
     username: draft.username,
@@ -1331,11 +1394,13 @@ async function finishShift(){
     machineId: draft.machineId,
     machineName: draft.machineName,
     demand: draft.demand,
+
     hmStart: draft.hmStart,
     hmStartPhoto: draft.hmStartPhoto,
     checklist: draft.checklist,
     avaria: draft.avaria,
     startNotes: draft.startNotes,
+
     hmEnd,
     hmEndPhoto,
     hoursWorked,
@@ -1343,6 +1408,7 @@ async function finishShift(){
     stopReason: $("stop_reason").value,
     stopDetail: $("stop_detail").value.trim(),
     dayNotes: $("day_notes").value.trim(),
+
     fuel: ($("fuel_yes").value === "sim") ? {
       yes:true,
       type: $("fuel_type").value,
@@ -1355,27 +1421,25 @@ async function finishShift(){
     } : { yes:false }
   };
 
-  db.records.push(record);
-  saveDB();
-  clearDraft(session.username, date);
+  await insertRecord(record);
+  await deleteDraft(session.username, date);
 
-  toast("Turno encerrado ✅");
+  toast("Turno encerrado ✅ (sincronizado)");
 
   lockStartFields(false);
   enableEndFields(false);
   resetStartFields();
   resetEndFields();
   updateTurnInfo();
-  updateDemandSummary();
   setStep(1);
-
-  // Atualiza admin se estiver aberto em outro momento
-  if(session.role === "admin"){ initAdmin(); }
 }
 
-function loadDraftToUIIfExists(){
+/* =======================
+   LOAD DRAFT INTO UI
+   ======================= */
+async function loadDraftToUIIfExists(){
   const date = $("opDate").value;
-  const draft = getDraft(session.username, date);
+  const draft = await loadDraft(session.username, date);
 
   if(!draft){
     lockStartFields(false);
@@ -1419,17 +1483,24 @@ function loadDraftToUIIfExists(){
   updateTurnInfo();
 }
 
-function initOperator(){
+/* =======================
+   OPERATOR INIT
+   ======================= */
+async function initOperator(){
+  await loadMachines();
+  await loadUsers();
+  await loadDemandFor(session.username);
+
   const user = findUserByUsername(session.username);
   $("opInfo").innerHTML =
-    `<b>Operador:</b> ${esc(user.name)}<br><b>Máquina:</b> ${esc(machineName(user.machineId))}`;
+    `<b>Operador:</b> ${esc(user.name)}<br><b>Máquina:</b> ${esc(machineName(user.machine_id))}`;
 
   $("opDate").value = todayStr();
 
-  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
+  const prev = db.demandByUser[session.username] || null;
   if(prev){
     $("prevDemandBox").style.display = "";
-    $("prevDemandText").textContent = formatDemand(prev);
+    $("prevDemandText").textContent = formatDemand(prev, null);
   }else{
     $("prevDemandBox").style.display = "none";
   }
@@ -1437,82 +1508,162 @@ function initOperator(){
   if($("usePrevDemand").value==="sim" && prev) setDemandUI(prev);
   else setDemandUI(null);
 
-  updateDemandTypeUI();
+  await updateDemandTypeUI();
   updateDemandSummary();
 
-  loadDraftToUIIfExists();
-  updateTurnInfo();
+  await loadDraftToUIIfExists();
 
-  const d = getDraft(session.username, $("opDate").value);
+  const d = db.drafts[draftKey(session.username, $("opDate").value)] || null;
   setStep(d ? 3 : 1);
 }
 
 /* =======================
-   ADMIN
+   ADMIN: TABS
+   ======================= */
+function setupAdminTabs(){
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  function showTab(tab){
+    tabs.forEach(x=>x.classList.toggle("active", x.dataset.tab===tab));
+    $("ad_dash").style.display = (tab==="dash") ? "" : "none";
+    $("ad_machines").style.display = (tab==="machines") ? "" : "none";
+    $("ad_users").style.display = (tab==="users") ? "" : "none";
+    $("ad_records").style.display = (tab==="records") ? "" : "none";
+    $("ad_export").style.display = (tab==="export") ? "" : "none";
+  }
+  tabs.forEach(t => t.onclick = async ()=> {
+    showTab(t.dataset.tab);
+    if(t.dataset.tab==="machines"){ await refreshAllAdminData(); renderMachinesTable(); fillMachineSelectForUsers(); }
+    if(t.dataset.tab==="users"){ await refreshAllAdminData(); renderUsersTable(); fillMachineSelectForUsers(); }
+    if(t.dataset.tab==="records"){ await renderRecordsTable(); }
+    if(t.dataset.tab==="dash"){ await refreshAdmin(); }
+  });
+  showTab("dash");
+}
+
+/* =======================
+   ADMIN: DASH
+   ======================= */
+async function machineStatusToday(){
+  const today = todayStr();
+
+  // drafts de hoje
+  const { data: drafts, error: e1 } = await sb.from("drafts").select("*").eq("date", today);
+  if(e1) throw e1;
+
+  // records de hoje
+  const { data: recs, error: e2 } = await sb.from("records").select("*").eq("date", today);
+  if(e2) throw e2;
+
+  const draftByMachine = new Map();
+  (drafts||[]).forEach(row=>{
+    const d = row.data;
+    if(d?.machineId) draftByMachine.set(d.machineId, d);
+  });
+
+  const recordByMachine = new Map();
+  (recs||[]).forEach(row=>{
+    const r = row.data;
+    if(r?.machineId) recordByMachine.set(r.machineId, r);
+  });
+
+  return db.machines.map(m=>{
+    const d = draftByMachine.get(m.id) || null;
+    const r = recordByMachine.get(m.id) || null;
+    const stopByAvaria = (r?.avaria && r.avaria.canOperate==="nao") || (d?.avaria && d.avaria.canOperate==="nao");
+
+    let status = { label:"Sem diário", badge:"badge" };
+    let operador = "—";
+    let hor = "—";
+    let dem = "—";
+
+    if(d){
+      status = { label: stopByAvaria ? "Parada" : "Rodando", badge: stopByAvaria ? "badge bad" : "badge ok" };
+      operador = d.operatorName || "—";
+      hor = `Ini: ${d.hmStart}`;
+      dem = formatDemand(d.demand, null);
+    } else if(r){
+      status = { label: stopByAvaria ? "Parada" : "Encerrada hoje", badge: stopByAvaria ? "badge bad" : "badge warn" };
+      operador = r.operatorName || "—";
+      hor = `Ini: ${r.hmStart} • Fim: ${r.hmEnd}`;
+      dem = formatDemand(r.demand, null);
+    }
+    return { machine:m.name, status, operador, hor, dem };
+  });
+}
+async function renderMachineStatusTable(){
+  const rows = await machineStatusToday();
+  $("mach_status_body").innerHTML = rows.map(x=>`
+    <tr>
+      <td><b>${esc(x.machine)}</b></td>
+      <td><span class="${esc(x.status.badge)}">${esc(x.status.label)}</span></td>
+      <td>${esc(x.operador)}</td>
+      <td>${esc(x.hor)}</td>
+      <td>${esc(x.dem)}</td>
+    </tr>
+  `).join("");
+}
+
+async function refreshAdmin(){
+  await loadMachines();
+  await renderMachineStatusTable();
+
+  const from = $("ad_from").value || "0000-01-01";
+  const to = $("ad_to").value || "9999-12-31";
+  await loadRecordsRange(from, to);
+
+  let hours=0, liters=0, grave=0;
+  db.records.forEach(row=>{
+    hours += Number(row.hours_worked||0);
+    liters += Number(row.fuel_liters||0);
+    if(row.avaria_severity==="grave") grave++;
+  });
+
+  $("kpi_hours").textContent = hours.toFixed(1);
+  $("kpi_liters").textContent = liters.toFixed(1);
+  $("kpi_grave").textContent = String(grave);
+
+  const today = todayStr();
+  const { data: recToday } = await sb.from("records").select("machine_id").eq("date", today);
+  const { data: drToday } = await sb.from("drafts").select("data").eq("date", today);
+
+  const hasToday = new Set((recToday||[]).map(r=>r.machine_id).filter(Boolean));
+  const hasDraftToday = new Set((drToday||[]).map(d=>d?.data?.machineId).filter(Boolean));
+
+  const sem = db.machines.filter(m=> !hasToday.has(m.id) && !hasDraftToday.has(m.id)).length;
+  $("kpi_sem").textContent = String(sem);
+}
+
+/* =======================
+   ADMIN: MACHINES CRUD
    ======================= */
 let editingMachineId = null;
-let editingUserId = null;
 
-function showAdminTab(tab){
-  const map = {
-    dash: $("ad_dash"),
-    machines: $("ad_machines"),
-    users: $("ad_users"),
-    records: $("ad_records"),
-    export: $("ad_export")
-  };
-  Object.keys(map).forEach(k => map[k].style.display = (k===tab) ? "" : "none");
-
-  document.querySelectorAll(".tab").forEach(t=>{
-    t.classList.toggle("active", t.dataset.tab === tab);
-  });
+function machineStatusLabel(s){
+  const map = { disponivel:"Disponível", operando:"Operando", parada:"Parada", manutencao:"Manutenção", locada:"Locada" };
+  return map[s] || s || "—";
 }
-
-function initAdmin(){
-  // Datas padrão
-  $("ad_from").value = $("ad_from").value || todayStr();
-  $("ad_to").value = $("ad_to").value || todayStr();
-  $("rep_from").value = $("rep_from").value || todayStr();
-  $("rep_to").value = $("rep_to").value || todayStr();
-
-  renderMachinesSelect();
-  renderMachinesTable();
-  renderUsersTable();
-  renderDashboard();
-  renderRecordsTable();
-}
-
-function renderMachinesSelect(){
-  const sel = $("u_machine");
-  sel.innerHTML = `<option value="">— (sem vincular)</option>` + db.machines.map(m=>(
-    `<option value="${esc(m.id)}">${esc(m.name)}</option>`
-  )).join("");
-}
-
 function renderMachinesTable(){
-  const tb = $("machines_body");
-  tb.innerHTML = db.machines.map(m => `
+  $("machines_body").innerHTML = db.machines.map(m=>`
     <tr>
-      <td>${esc(m.name)}</td>
-      <td>${esc(m.type)}</td>
-      <td>${esc(m.model)}</td>
-      <td>${esc(m.status)}</td>
+      <td><b>${esc(m.name)}</b></td>
+      <td>${esc(m.type||"—")}</td>
+      <td>${esc(m.model||"—")}</td>
+      <td><span class="badge">${esc(machineStatusLabel(m.status))}</span></td>
       <td>
-        <button class="btn" type="button" data-act="editM" data-id="${esc(m.id)}">Editar</button>
-        <button class="btn danger" type="button" data-act="delM" data-id="${esc(m.id)}">Excluir</button>
+        <button class="btn" type="button" onclick="editMachine('${m.id}')">Editar</button>
+        <button class="btn danger" type="button" onclick="deleteMachine('${m.id}')">Excluir</button>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="5" class="muted">Nenhuma máquina cadastrada.</td></tr>`;
-
-  tb.querySelectorAll("button").forEach(b=>{
-    b.onclick = ()=>{
-      const id = b.dataset.id;
-      if(b.dataset.act === "editM") editMachine(id);
-      if(b.dataset.act === "delM") deleteMachine(id);
-    };
-  });
+  `).join("") || `<tr><td colspan="5" class="muted">Sem máquinas cadastradas.</td></tr>`;
 }
-
+function clearMachineForm(){
+  editingMachineId = null;
+  $("m_name").value="";
+  $("m_type").value="";
+  $("m_model").value="";
+  $("m_status").value="disponivel";
+  $("m_notes").value="";
+}
 function editMachine(id){
   const m = findMachineById(id);
   if(!m) return;
@@ -1524,532 +1675,634 @@ function editMachine(id){
   $("m_notes").value = m.notes || "";
   toast("Editando máquina");
 }
-
-function deleteMachine(id){
+async function deleteMachine(id){
   if(!confirm("Excluir esta máquina?")) return;
-
-  // Desvincula usuários que estavam nela
-  db.users.forEach(u=>{
-    if(u.machineId === id) u.machineId = null;
-  });
-
-  db.machines = db.machines.filter(m => m.id !== id);
-  saveDB();
-  renderMachinesSelect();
-  renderMachinesTable();
-  renderUsersTable();
-  renderDashboard();
+  const { error } = await sb.from("machines").delete().eq("id", id);
+  if(error){ toast("Erro ao excluir"); console.error(error); return; }
   toast("Máquina excluída");
+  await loadMachines();
+  renderMachinesTable();
+  fillMachineSelectForUsers();
 }
-
-function saveMachine(){
+async function saveMachine(){
   const name = $("m_name").value.trim();
   if(!name){ toast("Informe o nome da máquina"); return; }
-  const m = {
-    id: editingMachineId || uid("m"),
+
+  const obj = {
     name,
     type: $("m_type").value.trim(),
     model: $("m_model").value.trim(),
     status: $("m_status").value,
     notes: $("m_notes").value.trim()
   };
+
   if(editingMachineId){
-    const idx = db.machines.findIndex(x=>x.id===editingMachineId);
-    if(idx>=0) db.machines[idx] = m;
-    editingMachineId = null;
+    const { error } = await sb.from("machines").update(obj).eq("id", editingMachineId);
+    if(error){ toast("Erro ao salvar"); console.error(error); return; }
   }else{
-    db.machines.push(m);
+    const { error } = await sb.from("machines").insert({ id: genId(), ...obj });
+    if(error){ toast("Erro ao criar"); console.error(error); return; }
   }
-  saveDB();
-  $("m_name").value=""; $("m_type").value=""; $("m_model").value=""; $("m_status").value="disponivel"; $("m_notes").value="";
-  renderMachinesSelect();
+  toast("Máquina salva ✅");
+  clearMachineForm();
+  await loadMachines();
   renderMachinesTable();
-  renderDashboard();
-  toast("Máquina salva");
+  fillMachineSelectForUsers();
 }
 
+/* =======================
+   ADMIN: USERS CRUD
+   ======================= */
+let editingUserId = null;
+
+function fillMachineSelectForUsers(){
+  const sel = $("u_machine");
+  sel.innerHTML = `<option value="">— (nenhuma)</option>` + db.machines.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+}
 function renderUsersTable(){
-  const tb = $("users_body");
-  tb.innerHTML = db.users.map(u => `
-    <tr>
-      <td>${esc(u.name)}</td>
-      <td>${esc(u.username)}</td>
-      <td>${esc(u.role)}</td>
-      <td>${u.active ? "Sim" : "Não"}</td>
-      <td>${esc(machineName(u.machineId))}</td>
-      <td>
-        <button class="btn" type="button" data-act="editU" data-id="${esc(u.id)}">Editar</button>
-        ${normalizeLogin(u.username)==="admin" ? "" : `<button class="btn danger" type="button" data-act="delU" data-id="${esc(u.id)}">Excluir</button>`}
-      </td>
-    </tr>
-  `).join("");
-
-  tb.querySelectorAll("button").forEach(b=>{
-    b.onclick = ()=>{
-      const id = b.dataset.id;
-      if(b.dataset.act === "editU") editUser(id);
-      if(b.dataset.act === "delU") deleteUser(id);
-    };
-  });
+  $("users_body").innerHTML = db.users.map(u=>{
+    const active = u.active ? "Sim" : "Não";
+    const role = u.role === "admin" ? "Admin" : "Operador";
+    return `
+      <tr>
+        <td><b>${esc(u.name)}</b></td>
+        <td>${esc(u.username)}</td>
+        <td><span class="badge">${esc(role)}</span></td>
+        <td>${esc(active)}</td>
+        <td>${esc(machineName(u.machine_id))}</td>
+        <td>
+          <button class="btn" type="button" onclick="editUser('${u.id}')">Editar</button>
+          <button class="btn" type="button" onclick="resetUserPass('${u.id}')">Senha</button>
+          <button class="btn danger" type="button" onclick="deleteUser('${u.id}')">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" class="muted">Sem usuários cadastrados.</td></tr>`;
 }
-
+function clearUserForm(){
+  editingUserId = null;
+  $("u_name").value="";
+  $("u_user").value="";
+  $("u_pass").value="";
+  $("u_role").value="operator";
+  $("u_active").value="true";
+  $("u_machine").value="";
+}
 function editUser(id){
-  const u = db.users.find(x=>x.id===id);
+  const u = findUserById(id);
   if(!u) return;
   editingUserId = id;
   $("u_name").value = u.name || "";
   $("u_user").value = u.username || "";
-  $("u_pass").value = u.password || "";
+  $("u_pass").value = "";
   $("u_role").value = u.role || "operator";
-  $("u_active").value = u.active ? "true" : "false";
-  $("u_machine").value = u.machineId || "";
+  $("u_active").value = String(!!u.active);
+  $("u_machine").value = u.machine_id || "";
   toast("Editando usuário");
 }
-
-function deleteUser(id){
-  const u = db.users.find(x=>x.id===id);
+async function deleteUser(id){
+  const u = findUserById(id);
   if(!u) return;
-  if(normalizeLogin(u.username)==="admin"){ toast("Não pode excluir o admin"); return; }
+  if(u.username === "admin"){
+    toast("Não é permitido excluir o admin principal");
+    return;
+  }
   if(!confirm("Excluir este usuário?")) return;
-  db.users = db.users.filter(x=>x.id!==id);
-  saveDB();
+  const { error } = await sb.from("users").delete().eq("id", id);
+  if(error){ toast("Erro ao excluir"); console.error(error); return; }
+  await loadUsers();
   renderUsersTable();
   toast("Usuário excluído");
 }
-
-function saveUser(){
+async function resetUserPass(id){
+  const u = findUserById(id);
+  if(!u) return;
+  const newPass = prompt("Digite a nova senha:", "");
+  if(newPass === null) return;
+  if(!newPass.trim()){ toast("Senha inválida"); return; }
+  const { error } = await sb.from("users").update({ password: newPass.trim() }).eq("id", id);
+  if(error){ toast("Erro ao atualizar senha"); console.error(error); return; }
+  await loadUsers();
+  renderUsersTable();
+  toast("Senha atualizada");
+}
+async function saveUser(){
   const name = $("u_name").value.trim();
   const username = $("u_user").value.trim();
-  const password = $("u_pass").value;
-  if(!name || !username || !password){ toast("Preencha nome, usuário e senha"); return; }
-
+  const pass = $("u_pass").value;
   const role = $("u_role").value;
-  const active = $("u_active").value === "true";
+  const active = ($("u_active").value === "true");
   const machineId = $("u_machine").value || null;
 
-  // Valida usuário duplicado
+  if(!name){ toast("Informe o nome"); return; }
+  if(!username){ toast("Informe o usuário (login)"); return; }
+  if(!editingUserId && !pass.trim()){ toast("Defina uma senha"); return; }
+
   const nu = normalizeLogin(username);
-  const other = db.users.find(x => normalizeLogin(x.username)===nu && x.id !== editingUserId);
-  if(other){ toast("Já existe esse usuário"); return; }
 
-  const u = {
-    id: editingUserId || uid("u"),
-    name,
-    username,
-    password,
-    role,
-    active,
-    machineId: role==="operator" ? machineId : null
-  };
-
-  if(editingUserId){
-    const idx = db.users.findIndex(x=>x.id===editingUserId);
-    if(idx>=0) db.users[idx] = u;
-    editingUserId = null;
-  }else{
-    db.users.push(u);
+  const exists = db.users.find(u => normalizeLogin(u.username) === nu && u.id !== editingUserId);
+  if(exists){
+    toast("Usuário (login) já existe (mesmo nome, só muda acento/caixa/espaço)");
+    return;
+  }
+  if(nu === "admin" && username !== "admin"){
+    toast("Esse login conflita com 'admin'. Escolha outro.");
+    return;
   }
 
-  saveDB();
-  $("u_name").value=""; $("u_user").value=""; $("u_pass").value=""; $("u_role").value="operator"; $("u_active").value="true"; $("u_machine").value="";
+  if(editingUserId){
+    const obj = {
+      name,
+      username,
+      role,
+      active,
+      machine_id: (role==="operator") ? machineId : null
+    };
+    if(pass.trim()) obj.password = pass.trim();
+    const { error } = await sb.from("users").update(obj).eq("id", editingUserId);
+    if(error){ toast("Erro ao salvar usuário"); console.error(error); return; }
+  }else{
+    const { error } = await sb.from("users").insert({
+      id: genId(),
+      name,
+      username,
+      password: pass.trim(),
+      role,
+      active,
+      machine_id: (role==="operator") ? machineId : null
+    });
+    if(error){ toast("Erro ao criar usuário"); console.error(error); return; }
+  }
+
+  await loadUsers();
+  clearUserForm();
   renderUsersTable();
-  renderDashboard();
-  toast("Usuário salvo");
+  toast("Usuário salvo ✅");
 }
 
-function demandText(d){
-  if(!d) return "—";
-  if(d.type==="obra") return `Obra: ${d.obraName || "?"} (${d.obraLocation || "?"})`;
-  if(d.type==="locacao") return `Locação: ${d.client || "?"} (${d.location || "?"})`;
-  return "—";
+/* =======================
+   ADMIN: RECORDS
+   ======================= */
+function getMachineNameFromRecordRow(row){
+  const r = row.data;
+  return r?.machineName || row.machine_name || machineName(row.machine_id) || "—";
 }
+async function renderRecordsTable(){
+  const from = $("rep_from").value || "0000-01-01";
+  const to = $("rep_to").value || "9999-12-31";
 
-function renderDashboard(){
-  const dateFrom = $("ad_from").value || todayStr();
-  const dateTo = $("ad_to").value || todayStr();
+  const { data, error } = await sb.from("records")
+    .select("*")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", {ascending:false});
+  if(error){ toast("Erro ao buscar registros"); console.error(error); return; }
 
-  const inRange = (rec)=>{
-    return rec.date >= dateFrom && rec.date <= dateTo;
-  };
-  const recs = db.records.filter(inRange);
-
-  // KPIs
-  const hours = recs.reduce((a,r)=>a + (Number(r.hoursWorked)||0),0);
-  const liters = recs.reduce((a,r)=>a + (r.fuel?.yes ? (Number(r.fuel.liters)||0) : 0),0);
-  const grave = recs.reduce((a,r)=>a + (r.avaria?.severity==="grave" ? 1 : 0),0);
-
-  $("kpi_hours").textContent = hours.toFixed(1);
-  $("kpi_liters").textContent = liters.toFixed(1);
-  $("kpi_grave").textContent = String(grave);
-
-  // Sem diário no período (máquinas que não aparecem)
-  const machineIdsInRecs = new Set(recs.map(r=>r.machineId));
-  const sem = db.machines.filter(m=>!machineIdsInRecs.has(m.id)).length;
-  $("kpi_sem").textContent = String(sem);
-
-  // Status hoje
-  const today = todayStr();
-  const lastByMachine = {};
-  db.records.forEach(r=>{
-    if(!lastByMachine[r.machineId] || r.createdAtISO > lastByMachine[r.machineId].createdAtISO){
-      lastByMachine[r.machineId] = r;
-    }
-  });
-
-  const body = $("mach_status_body");
-  body.innerHTML = db.machines.map(m=>{
-    const r = lastByMachine[m.id];
-    const demand = r ? demandText(r.demand) : "—";
-    const op = r ? r.operatorName : "—";
-    const hm = r ? `${r.hmStart} → ${r.hmEnd}` : "—";
-    const stBadge = r && r.date===today ? `<span class="badge ok">com diário</span>` : `<span class="badge">—</span>`;
+  const rows = data || [];
+  $("rep_body").innerHTML = rows.map(row=>{
+    const r = row.data || {};
+    const hrs = Number(row.hours_worked||0).toFixed(1);
+    const fuel = (Number(row.fuel_liters||0) > 0) ? `${row.fuel_liters} L` : "—";
+    const av = row.avaria_severity || "—";
     return `
       <tr>
-        <td>${esc(m.name)}</td>
-        <td>${stBadge}</td>
-        <td>${esc(op)}</td>
-        <td>${esc(hm)}</td>
-        <td>${esc(demand)}</td>
-      </tr>
-    `;
-  }).join("");
-}
-
-function renderRecordsTable(){
-  const from = $("rep_from").value || todayStr();
-  const to = $("rep_to").value || todayStr();
-  const recs = db.records
-    .filter(r=>r.date>=from && r.date<=to)
-    .sort((a,b)=> (b.date+a.createdAtISO).localeCompare(a.date+b.createdAtISO));
-
-  const tb = $("rep_body");
-  tb.innerHTML = recs.map(r=>{
-    const fuel = r.fuel?.yes ? `${Number(r.fuel.liters||0).toFixed(1)} L` : "—";
-    const av = r.avaria ? (r.avaria.severity==="grave" ? `<span class="badge bad">grave</span>` : `<span class="badge warn">${esc(r.avaria.severity)}</span>`) : "—";
-    return `
-      <tr>
-        <td>${esc(r.date)}</td>
-        <td>${esc(r.machineName)}</td>
-        <td>${esc(r.operatorName)}</td>
-        <td>${esc(demandText(r.demand))}</td>
-        <td>${esc(Number(r.hoursWorked||0).toFixed(1))}</td>
+        <td><b>${esc(row.date)}</b></td>
+        <td>${esc(getMachineNameFromRecordRow(row))}</td>
+        <td>${esc(r.operatorName || row.operator_name || "—")}</td>
+        <td>${esc(formatDemand(r.demand, null))}</td>
+        <td>${esc(hrs)}</td>
         <td>${esc(fuel)}</td>
-        <td>${av}</td>
-        <td><button class="btn" type="button" data-id="${esc(r.id)}">Ver</button></td>
+        <td>${esc(av)}</td>
+        <td>
+          <button class="btn" type="button" onclick="viewRecord('${row.id}')">Ver</button>
+          <button class="btn danger" type="button" onclick="deleteRecord('${row.id}')">Apagar</button>
+        </td>
       </tr>
     `;
   }).join("") || `<tr><td colspan="8" class="muted">Sem registros no período.</td></tr>`;
-
-  tb.querySelectorAll("button").forEach(b=>{
-    b.onclick = ()=> showRecordDetails(b.dataset.id);
-  });
 }
 
-function showRecordDetails(id){
-  const r = db.records.find(x=>x.id===id);
-  if(!r) return;
-  const imgs = [];
-  if(r.hmStartPhoto) imgs.push(`<img src="${r.hmStartPhoto}">`);
-  if(r.hmEndPhoto) imgs.push(`<img src="${r.hmEndPhoto}">`);
-  if(r.avaria?.photo) imgs.push(`<img src="${r.avaria.photo}">`);
-  if(r.fuel?.photo) imgs.push(`<img src="${r.fuel.photo}">`);
+async function deleteRecord(id){
+  if(!confirm("Apagar este registro?")) return;
+  const { error } = await sb.from("records").delete().eq("id", id);
+  if(error){ toast("Erro ao apagar"); console.error(error); return; }
+  toast("Registro apagado");
+  await renderRecordsTable();
+  await refreshAdmin();
+}
+
+/* =======================
+   MODAL
+   ======================= */
+function openModal(title, sub, html){
+  $("modalTitle").textContent = title;
+  $("modalSub").textContent = sub || "";
+  $("modalBody").innerHTML = html || "";
+  $("modalBack").style.display = "flex";
+}
+function closeModal(){
+  $("modalBack").style.display = "none";
+}
+async function viewRecord(id){
+  const { data, error } = await sb.from("records").select("*").eq("id", id).maybeSingle();
+  if(error || !data){ toast("Registro não encontrado"); return; }
+  const r = data.data || {};
+
+  const av = r.avaria;
+  const fu = r.fuel;
+
+  const photos = [];
+  if(r.hmStartPhoto) photos.push({label:"Horímetro inicial", src:r.hmStartPhoto});
+  if(r.hmEndPhoto) photos.push({label:"Horímetro final", src:r.hmEndPhoto});
+  if(av?.photo) photos.push({label:"Avaria", src:av.photo});
+  if(fu?.photo) photos.push({label:"Nota/abastecimento", src:fu.photo});
+
+  const photoHTML = photos.length ? `
+    <div class="divider"></div>
+    <h2>Fotos</h2>
+    <div class="preview">
+      ${photos.map(p=>`<div style="width:140px">
+        <div class="muted" style="margin-bottom:6px"><b>${esc(p.label)}</b></div>
+        <img src="${p.src}" style="width:140px;height:100px;object-fit:cover;border-radius:12px;border:1px solid var(--line)"/>
+      </div>`).join("")}
+    </div>
+  ` : "";
 
   const html = `
     <div class="notice">
       <b>Data:</b> ${esc(r.date)}<br>
-      <b>Máquina:</b> ${esc(r.machineName)}<br>
-      <b>Operador:</b> ${esc(r.operatorName)}<br>
-      <b>Demanda:</b> ${esc(demandText(r.demand))}<br>
-      <b>Horímetro:</b> ${esc(r.hmStart)} → ${esc(r.hmEnd)}<br>
-      <b>Horas:</b> ${esc(Number(r.hoursWorked||0).toFixed(1))}
+      <b>Máquina:</b> ${esc(r.machineName || "—")}<br>
+      <b>Operador:</b> ${esc(r.operatorName || "—")}<br>
+      <b>Demanda:</b> ${esc(formatDemand(r.demand, null))}
     </div>
 
     <div class="divider"></div>
-
+    <h2>Horímetro / Horas</h2>
     <div class="notice">
-      <b>Checklist:</b><br>
-      Óleo: ${esc(r.checklist?.oil)} • Água: ${esc(r.checklist?.cool)} • Hidráulico: ${esc(r.checklist?.hyd)} • Vazamentos: ${esc(r.checklist?.leak)}<br>
-      Filtro ar: ${esc(r.checklist?.air)} • Esteira/Pneus: ${esc(r.checklist?.track)} • Painel: ${esc(r.checklist?.panel)} • Segurança: ${esc(r.checklist?.safe)}
+      <b>Inicial:</b> ${esc(r.hmStart)}<br>
+      <b>Final:</b> ${esc(r.hmEnd)}<br>
+      <b>Horas trabalhadas:</b> ${esc(r.hoursWorked)}<br>
+      <b>Paradas:</b> ${esc(r.hoursStopped)} ${r.stopReason ? `• ${esc(r.stopReason)} ${esc(r.stopDetail||"")}`:""}
+    </div>
+
+    ${r.dayNotes ? `<div class="divider"></div><h2>Observações do dia</h2><div class="notice">${esc(r.dayNotes).replaceAll("\n","<br>")}</div>`:""}
+
+    <div class="divider"></div>
+    <h2>Avaria</h2>
+    <div class="notice">
+      ${av ? `
+        <b>Categoria:</b> ${esc(av.category)}<br>
+        <b>Gravidade:</b> ${esc(av.severity)}<br>
+        <b>Pode operar:</b> ${esc(av.canOperate)}<br>
+        <b>Já vinha de antes:</b> ${esc(av.previous)}<br>
+        <b>Descrição:</b> ${esc(av.desc).replaceAll("\n","<br>")}
+      ` : "Nenhuma"}
     </div>
 
     <div class="divider"></div>
-
+    <h2>Abastecimento</h2>
     <div class="notice">
-      <b>Avaria:</b> ${r.avaria ? esc(r.avaria.severity)+" • "+esc(r.avaria.category)+"<br>"+esc(r.avaria.desc) : "—"}
+      ${fu?.yes ? `
+        <b>Tipo:</b> ${esc(fu.type)}<br>
+        <b>Litros:</b> ${esc(fu.liters)}<br>
+        <b>Total:</b> R$ ${esc(Number(fu.total).toFixed(2))}<br>
+        <b>R$/L:</b> ${esc(fu.pricePerLiter)}<br>
+        <b>L/h:</b> ${esc(fu.lph)}<br>
+        <b>Quem:</b> ${esc(fu.who)}
+      ` : "Não abasteceu"}
     </div>
 
-    <div class="divider"></div>
-
-    <div class="notice">
-      <b>Parada:</b> ${esc(Number(r.hoursStopped||0).toFixed(1))} h • ${esc(r.stopReason||"—")} • ${esc(r.stopDetail||"")}
-      <br><b>Obs:</b> ${esc(r.dayNotes||"—")}
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="notice">
-      <b>Abastecimento:</b> ${r.fuel?.yes ? `${esc(r.fuel.type)} • ${esc(r.fuel.liters)} L • R$ ${esc(r.fuel.total)} • ${esc(r.fuel.who)}` : "—"}
-    </div>
-
-    ${imgs.length ? `<div class="divider"></div><div class="preview">${imgs.join("")}</div>` : ""}
+    ${photoHTML}
   `;
-  openModal("Registro", `${r.date} • ${r.machineName}`, html);
-}
 
-function exportCSV(){
-  const rows = [];
-  const header = [
-    "date","machine","operator","demand_type","demand_name","demand_location",
-    "hm_start","hm_end","hours_worked","hours_stopped","stop_reason","stop_detail",
-    "fuel_yes","fuel_type","fuel_liters","fuel_total","fuel_price","fuel_lph",
-    "avaria_yes","avaria_category","avaria_severity","avaria_can_operate","avaria_previous","avaria_desc"
-  ];
-  rows.push(header);
-
-  db.records.forEach(r=>{
-    const d = r.demand || {};
-    rows.push([
-      r.date,
-      r.machineName,
-      r.operatorName,
-      d.type || "",
-      d.type==="obra" ? (d.obraName||"") : (d.client||""),
-      d.type==="obra" ? (d.obraLocation||"") : (d.location||""),
-      r.hmStart ?? "",
-      r.hmEnd ?? "",
-      r.hoursWorked ?? "",
-      r.hoursStopped ?? "",
-      r.stopReason ?? "",
-      r.stopDetail ?? "",
-      r.fuel?.yes ? "sim" : "nao",
-      r.fuel?.type ?? "",
-      r.fuel?.liters ?? "",
-      r.fuel?.total ?? "",
-      r.fuel?.pricePerLiter ?? "",
-      r.fuel?.lph ?? "",
-      r.avaria ? "sim" : "nao",
-      r.avaria?.category ?? "",
-      r.avaria?.severity ?? "",
-      r.avaria?.canOperate ?? "",
-      r.avaria?.previous ?? "",
-      (r.avaria?.desc ?? "").replace(/\r?\n/g," ")
-    ]);
-  });
-
-  const csv = rows.map(r=>r.map(v=>{
-    const s = String(v ?? "");
-    const needs = /[",\n;]/.test(s);
-    const safe = s.replaceAll('"','""');
-    return needs ? `"${safe}"` : safe;
-  }).join(";")).join("\n");
-
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `diario_maquinas_${todayStr()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function wipeAll(){
-  if(!confirm("Apagar tudo deste aparelho?")) return;
-  localStorage.removeItem(LS_KEY);
-  localStorage.removeItem(LS_SESSION);
-  db = loadDB();
-  ensureAdmin();
-  saveDB();
-  toast("Apagado");
-  logout();
+  openModal("Registro", `${r.machineName || "—"} • ${r.operatorName || "—"}`, html);
 }
 
 /* =======================
-   EVENTS
+   EXPORT CSV (do banco)
    ======================= */
-// LOGIN / LOGOUT
-$("btnLogin").onclick = login;
-$("btnLogout").onclick = logout;
+function csvCell(v){
+  const s = (v===null || v===undefined) ? "" : String(v);
+  if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function downloadText(text, filename, mime){
+  const blob = new Blob([text], {type: mime || "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+async function exportCSV(){
+  const { data, error } = await sb.from("records").select("*").order("date", {ascending:true});
+  if(error){ toast("Erro ao exportar"); console.error(error); return; }
 
-// DEMANDA
-$("btnSaveDemand").onclick = saveDemand;
-$("btnCloseRental").onclick = closeRental;
+  const header = [
+    "id","date","machine","operator","username",
+    "demand_type","obra_name","obra_location","client","loc_location",
+    "hm_start","hm_end","hours_worked","hours_stopped","stop_reason","stop_detail","day_notes",
+    "fuel_yes","fuel_type","fuel_liters","fuel_total","fuel_price_per_liter","fuel_lph","fuel_who",
+    "avaria_yes","av_cat","av_sev","av_can_operate","av_previous","av_desc"
+  ];
+  const lines = [header.join(",")];
 
-$("btnNextToStart").onclick = ()=>{
-  const date = $("opDate").value;
-  if(!date){ toast("Selecione a data"); return; }
+  (data||[]).forEach(row=>{
+    const r = row.data || {};
+    const dem = r.demand || {};
+    const fu = r.fuel || {};
+    const av = r.avaria || {};
+    lines.push([
+      row.id, row.date, r.machineName||row.machine_name||"", r.operatorName||row.operator_name||"", row.username,
+      dem.type||"", dem.obraName||"", dem.obraLocation||"", dem.client||"", dem.location||"",
+      r.hmStart??"", r.hmEnd??"", r.hoursWorked??"", r.hoursStopped??"", r.stopReason
+, r.stopDetail??"", r.dayNotes??"",
+      fu.yes ? "sim" : "nao", fu.type||"", fu.liters??"", fu.total??"", fu.pricePerLiter??"", fu.lph??"", fu.who||"",
+      r.avaria ? "sim" : "nao", av.category||"", av.severity||"", av.canOperate||"", av.previous||"", av.desc||""
+    ].map(csvCell).join(","));
+  });
 
-  const user = findUserByUsername(session.username);
-  if(!user || !user.active){ toast("Usuário inativo"); logout(); return; }
-  if(!user.machineId){ toast("Admin precisa vincular uma máquina ao seu login"); return; }
+  downloadText(lines.join("\n"), `diario_maquinas_${todayStr()}.csv`, "text/csv;charset=utf-8");
+  toast("CSV exportado ✅");
+}
 
-  const d = demandFromUI();
-  if(!d){ toast("Selecione o tipo de demanda"); return; }
+/* =======================
+   ADMIN: REFRESH ALL
+   ======================= */
+async function refreshAllAdminData(){
+  await loadMachines();
+  await loadUsers();
+}
 
-  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Preencha nome e localização da obra"); return; }
-  if(d.type==="locacao" && (!d.client || !d.location)){ toast("Preencha cliente e localização da locação"); return; }
+/* =======================
+   LOGIN / LOGOUT
+   ======================= */
+async function doLogin(){
+  const usernameRaw = $("loginUser").value.trim();
+  const pass = $("loginPass").value;
+  if(!usernameRaw || !pass){ toast("Preencha usuário e senha"); return; }
 
-  db.demandsByUser[normalizeLogin(session.username)] = d;
+  await refreshAllAdminData();
 
-  if(d.type === "locacao"){
-    const r = activeRentalForUser(session.username);
-    if(!r){
-      db.rentals.push({
-        id: uid("rent"),
-        username: session.username,
-        machineId: user.machineId,
-        client: d.client,
-        location: d.location,
-        startISO: nowISO(),
-        endISO: null,
-        status: "ativa"
-      });
-    }
+  const user = findUserByUsername(usernameRaw);
+  if(!user){ toast("Usuário não encontrado"); return; }
+  if(!user.active){ toast("Usuário inativo"); return; }
+  if(String(user.password||"") !== String(pass||"")){ toast("Senha incorreta"); return; }
+
+  session = { username: user.username, role: user.role };
+  $("pillName").textContent = user.name || user.username;
+
+  if($("keepLogged").value === "sim") saveSession();
+  else clearSession();
+
+  if(session.role === "admin"){
+    showAdmin();
+    setupAdminTabs();
+    // defaults de datas
+    $("ad_from").value = todayStr();
+    $("ad_to").value = todayStr();
+    $("rep_from").value = todayStr();
+    $("rep_to").value = todayStr();
+    await refreshAdmin();
+    $("adminConn").textContent = "Conexão: OK ✅";
+    attachRealtimeSubscriptions(); // admin também acompanha em tempo real
+  }else{
+    showOperator();
+    await initOperator();
+    attachRealtimeSubscriptions(); // operador também acompanha (pra draft/records refletirem)
   }
 
-  saveDB();
-  updateDemandTypeUI();
-  updateDemandSummary();
-  toast("Demanda salva ✅");
-  setStep(2);
-};
+  toast("Entrou ✅");
+}
 
-$("btnBackToDemand").onclick = ()=> setStep(1);
-$("btnBackToStart").onclick = ()=> setStep(2);
+function logout(){
+  session = { username:null, role:null };
+  clearSession();
+  showLogin();
+  toast("Saiu");
+}
 
-$("opDate").onchange = ()=>{
-  loadDraftToUIIfExists();
-  updateTurnInfo();
-  const d = getDraft(session.username, $("opDate").value);
-  setStep(d ? 3 : 1);
-};
+/* =======================
+   REALTIME (SINCRONIZAÇÃO)
+   ======================= */
+let rtChannel = null;
 
-$("usePrevDemand").onchange = ()=>{
-  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
-  if($("usePrevDemand").value==="sim" && prev) setDemandUI(prev);
-  else setDemandUI(null);
-};
+function attachRealtimeSubscriptions(){
+  try{
+    if(rtChannel){
+      sb.removeChannel(rtChannel);
+      rtChannel = null;
+    }
+  }catch(e){}
 
-$("btnUsePrev").onclick = ()=>{
-  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
-  if(!prev){ toast("Sem demanda anterior"); return; }
-  setDemandUI(prev);
-  toast("Demanda anterior aplicada");
-};
+  // Um canal único pra atualizar cache e telas quando alguém salvar.
+  rtChannel = sb.channel("diario_realtime_v1");
 
-$("btnNewDemand").onclick = ()=>{
-  setDemandUI(null);
-  toast("Nova demanda");
-};
+  // Atualiza máquinas
+  rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"machines" }, async () => {
+    await loadMachines();
+    if(session.role === "admin"){
+      renderMachinesTable();
+      fillMachineSelectForUsers();
+      await renderMachineStatusTable();
+      await refreshAdmin();
+    }else{
+      // operador só precisa do nome da máquina caso admin altere vínculo
+      await loadUsers();
+      const u = findUserByUsername(session.username);
+      if(u){
+        $("opInfo").innerHTML =
+          `<b>Operador:</b> ${esc(u.name)}<br><b>Máquina:</b> ${esc(machineName(u.machine_id))}`;
+      }
+    }
+  });
+
+  // Atualiza usuários (vínculo/ativo/senha)
+  rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"users" }, async () => {
+    await loadUsers();
+    if(session.role === "admin"){
+      renderUsersTable();
+      fillMachineSelectForUsers();
+    }else{
+      const u = findUserByUsername(session.username);
+      if(!u || !u.active){
+        toast("Seu usuário foi desativado. Saindo…");
+        logout();
+        return;
+      }
+      $("pillName").textContent = u.name || u.username;
+      $("opInfo").innerHTML =
+        `<b>Operador:</b> ${esc(u.name)}<br><b>Máquina:</b> ${esc(machineName(u.machine_id))}`;
+    }
+  });
+
+  // Drafts (turno rodando)
+  rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"drafts" }, async (payload) => {
+    const row = payload?.new || payload?.old;
+    if(!row) return;
+
+    if(session.role === "admin"){
+      // dashboard de hoje muda se draft entra/sai
+      await renderMachineStatusTable();
+      await refreshAdmin();
+    }else{
+      // operador: se for o dele e mesma data, recarrega UI do draft
+      if(row.username === session.username && row.date === $("opDate").value){
+        await loadDraftToUIIfExists();
+      }
+    }
+  });
+
+  // Records (turno encerrado)
+  rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"records" }, async () => {
+    if(session.role === "admin"){
+      await renderMachineStatusTable();
+      await refreshAdmin();
+      // se estiver na aba registros, atualiza
+      const tabActive = document.querySelector(".tab.active")?.dataset?.tab;
+      if(tabActive === "records"){
+        await renderRecordsTable();
+      }
+    }
+  });
+
+  rtChannel.subscribe((status) => {
+    const ok = (status === "SUBSCRIBED");
+    if(session.role === "admin"){
+      $("adminConn").textContent = ok ? "Conexão: RealTime OK ✅" : `Conexão: ${status}`;
+    }else{
+      $("connState").textContent = ok ? "Conexão: RealTime OK ✅" : `Conexão: ${status}`;
+    }
+  });
+}
+
+/* =======================
+   EVENTOS UI
+   ======================= */
+$("btnLogin").onclick = doLogin;
+$("btnLogout").onclick = logout;
 
 $("demandType").onchange = updateDemandTypeUI;
+$("btnSaveDemand").onclick = saveDemand;
+$("btnCloseRental").onclick = closeRentalUI;
 
-$("hasAvaria").onchange = ()=>{
-  const enabled = ($("hasAvaria").value === "sim");
-  setAvariaEnabled(enabled);
-  $("av_cat").disabled = !enabled;
-};
-
-$("hm_end").oninput = calcHours;
-$("fuel_yes").onchange = ()=>{ setFuelBlockVisible(); calcFuel(); };
-$("fuel_liters").oninput = calcFuel;
-$("fuel_total").oninput = calcFuel;
-
-$("hm_start_photo").onchange = async ()=>{
-  const f = $("hm_start_photo").files?.[0] || null;
-  if(!f){ showPreview("hm_start_preview", null); return; }
-  const data = await fileToCompressedDataURL(f);
-  showPreview("hm_start_preview", data);
-};
-$("av_photo").onchange = async ()=>{
-  const f = $("av_photo").files?.[0] || null;
-  if(!f){ showPreview("av_preview", null); return; }
-  const data = await fileToCompressedDataURL(f);
-  showPreview("av_preview", data);
-};
-$("hm_end_photo").onchange = async ()=>{
-  const f = $("hm_end_photo").files?.[0] || null;
-  if(!f){ showPreview("hm_end_preview", null); return; }
-  const data = await fileToCompressedDataURL(f);
-  showPreview("hm_end_preview", data);
-};
-$("fuel_photo").onchange = async ()=>{
-  const f = $("fuel_photo").files?.[0] || null;
-  if(!f){ showPreview("fuel_preview", null); return; }
-  const data = await fileToCompressedDataURL(f);
-  showPreview("fuel_preview", data);
-};
+$("btnNextToStart").onclick = ()=> setStep(2);
+$("btnBackToDemand").onclick = ()=> setStep(1);
+$("btnBackToStart").onclick = ()=> setStep(2);
 
 $("btnStartShift").onclick = startShift;
 $("btnFinishShift").onclick = finishShift;
 
-// Modal
-$("btnModalClose").onclick = closeModal;
-$("modalBack").onclick = (e)=>{ if(e.target === $("modalBack")) closeModal(); };
-document.addEventListener("keydown",(e)=>{ if(e.key === "Escape") closeModal(); });
-
-// Admin tabs
-document.querySelectorAll(".tab").forEach(t=>{
-  t.onclick = ()=>{
-    showAdminTab(t.dataset.tab);
-    if(t.dataset.tab==="dash") renderDashboard();
-    if(t.dataset.tab==="records") renderRecordsTable();
-    if(t.dataset.tab==="machines") renderMachinesTable();
-    if(t.dataset.tab==="users") renderUsersTable();
-  };
-});
-
-// Admin actions
-$("btnMachineClear").onclick = ()=>{
-  editingMachineId = null;
-  $("m_name").value=""; $("m_type").value=""; $("m_model").value=""; $("m_status").value="disponivel"; $("m_notes").value="";
-  toast("Limpo");
+$("usePrevDemand").onchange = async ()=>{
+  const prev = db.demandByUser[session.username] || null;
+  if($("usePrevDemand").value==="sim" && prev){
+    setDemandUI(prev);
+  }else{
+    setDemandUI(null);
+  }
 };
+
+$("btnUsePrev").onclick = ()=>{
+  const prev = db.demandByUser[session.username] || null;
+  if(prev) setDemandUI(prev);
+};
+$("btnNewDemand").onclick = ()=> setDemandUI(null);
+
+$("hasAvaria").onchange = ()=>{
+  const en = ($("hasAvaria").value === "sim");
+  setAvariaEnabled(en);
+};
+
+$("fuel_yes").onchange = ()=>{
+  setFuelBlockVisible();
+  calcFuel();
+};
+$("fuel_liters").oninput = calcFuel;
+$("fuel_total").oninput = calcFuel;
+$("hm_end").oninput = ()=>{
+  calcHours();
+  calcFuel();
+};
+
+$("opDate").onchange = async ()=>{
+  await loadDraftToUIIfExists();
+  updateTurnInfo();
+  const d = db.drafts[draftKey(session.username, $("opDate").value)] || null;
+  setStep(d ? 3 : 1);
+};
+
+$("hm_start_photo").onchange = async ()=>{
+  const f = $("hm_start_photo").files?.[0] || null;
+  const data = f ? await fileToCompressedDataURL(f) : null;
+  showPreview("hm_start_preview", data);
+};
+$("av_photo").onchange = async ()=>{
+  const f = $("av_photo").files?.[0] || null;
+  const data = f ? await fileToCompressedDataURL(f) : null;
+  showPreview("av_preview", data);
+};
+$("hm_end_photo").onchange = async ()=>{
+  const f = $("hm_end_photo").files?.[0] || null;
+  const data = f ? await fileToCompressedDataURL(f) : null;
+  showPreview("hm_end_preview", data);
+};
+$("fuel_photo").onchange = async ()=>{
+  const f = $("fuel_photo").files?.[0] || null;
+  const data = f ? await fileToCompressedDataURL(f) : null;
+  showPreview("fuel_preview", data);
+};
+
+// Admin buttons
+$("btnMachineClear").onclick = clearMachineForm;
 $("btnMachineSave").onclick = saveMachine;
 
-$("btnUserClear").onclick = ()=>{
-  editingUserId = null;
-  $("u_name").value=""; $("u_user").value=""; $("u_pass").value=""; $("u_role").value="operator"; $("u_active").value="true"; $("u_machine").value="";
-  toast("Limpo");
-};
+$("btnUserClear").onclick = clearUserForm;
 $("btnUserSave").onclick = saveUser;
 
-$("btnRefreshAdmin").onclick = renderDashboard;
 $("btnApplyFilters").onclick = renderRecordsTable;
 $("btnExportCSV").onclick = exportCSV;
-$("btnWipe").onclick = wipeAll;
+
+$("btnRefreshAdmin").onclick = refreshAdmin;
+$("btnForceRefresh").onclick = async ()=>{
+  await refreshAllAdminData();
+  await refreshAdmin();
+  toast("Atualizado do banco ✅");
+};
+
+/* Expor algumas funções pro onclick das tabelas */
+window.editMachine = editMachine;
+window.deleteMachine = deleteMachine;
+window.editUser = editUser;
+window.resetUserPass = resetUserPass;
+window.deleteUser = deleteUser;
+window.viewRecord = viewRecord;
+window.deleteRecord = deleteRecord;
 
 /* =======================
-   BOOT
+   INIT
    ======================= */
-(function boot(){
-  ensureAdmin();
-  saveDB();
-
-  const s = loadSession();
-  if(s && s.username){
-    const u = findUserByUsername(s.username);
-    if(u && u.active){
-      session = { username:u.username, role:u.role };
-      $("pillName").textContent = u.name || u.username;
-      $("btnLogout").style.display = "";
-
-      if(u.role === "admin"){
-        showAdmin();
-        initAdmin();
-        showAdminTab("dash");
-      }else{
-        showOperator();
-        initOperator();
-      }
-      return;
-    }else{
-      clearSession();
-    }
-  }
+(async function boot(){
   showLogin();
+
+  // Estado conexão (ping simples)
+  try{
+    const ok = await pingSupabase();
+    $("connState").textContent = ok ? "Conexão: OK ✅" : "Conexão: Falhou";
+  }catch(e){
+    $("connState").textContent = "Conexão: Erro";
+  }
+
+  // Auto-login
+  const saved = loadSession();
+  if(saved?.username){
+    session = saved;
+    $("loginUser").value = saved.username;
+    // não salva senha; usuário clica entrar (ou pode digitar senha)
+    // Se quiser login 100% automático, precisa auth real do Supabase.
+  }
 })();
 </script>
 </body>
 </html>
+
