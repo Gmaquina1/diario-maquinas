@@ -59,28 +59,36 @@
     th{background:#fafafa;color:var(--muted)}
     tr:last-child td{border-bottom:none}
 
-    /* Wizard (celular: vira "páginas") */
-    .wizardBar{
-      display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;
-      padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;
-      position:sticky;top:64px;z-index:70;
+    /* HOME DO OPERADOR (Opção B) */
+    .homeGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:12px;
+      margin-top:10px;
     }
-    .steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .stepDot{
-      display:inline-flex;align-items:center;gap:8px;
+    @media(max-width:900px){ .homeGrid{grid-template-columns:1fr} }
+    .bigBtn{
+      width:100%;
+      text-align:left;
+      padding:14px;
+      border-radius:14px;
       border:1px solid var(--line);
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:12px;
-      font-weight:900;
-      color:var(--muted);
       background:#fff;
+      cursor:pointer;
+      box-shadow:var(--shadow);
     }
-    .stepDot.active{border-color:var(--primary);color:var(--primary);background:#eff6ff}
+    .bigBtn:active{transform:translateY(1px)}
+    .bigBtn .t{font-size:14px;font-weight:900;color:var(--text);margin-bottom:6px}
+    .bigBtn .s{font-size:12px;color:var(--muted);line-height:1.35}
+    .bigBtn.primary{border-color:#bfdbfe;background:#eff6ff}
+    .bigBtn.ok{border-color:#bbf7d0;background:#f0fdf4}
+    .bigBtn.warn{border-color:#fed7aa;background:#fff7ed}
+    .bigBtn.bad{border-color:#fecaca;background:#fef2f2}
+    .bigBtn[disabled]{opacity:.55;cursor:not-allowed}
     .page{display:none}
     .page.active{display:block}
     @media(max-width:720px){
-      .page .card{min-height: calc(100vh - 170px);}
+      .page .card{min-height: calc(100vh - 150px);}
     }
 
     /* Modal */
@@ -98,7 +106,7 @@
       <div class="logo"></div>
       <div>
         <h1>Diário de Máquinas</h1>
-        <small>Sincronizado (Supabase) • Operador em páginas (celular)</small>
+        <small>Sincronizado (Supabase) • Operador em páginas (Home + Etapas)</small>
       </div>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -141,7 +149,7 @@
     <div class="muted" id="connState">Conexão: —</div>
   </div>
 
-  <!-- OPERADOR (WIZARD) -->
+  <!-- OPERADOR -->
   <div id="viewOperator" style="display:none">
 
     <div class="card">
@@ -152,30 +160,61 @@
       </div>
     </div>
 
-    <div class="wizardBar">
-      <div class="steps">
-        <div class="stepDot" id="dot1">1) Demanda</div>
-        <div class="stepDot" id="dot2">2) Início</div>
-        <div class="stepDot" id="dot3">3) Encerramento</div>
-      </div>
-      <div class="muted" id="wizHint">—</div>
-    </div>
-
-    <!-- PAGE 1: DEMANDA -->
-    <div class="page" id="page1">
+    <!-- HOME DO OPERADOR -->
+    <div class="page" id="opHome">
       <div class="card">
-        <h2>Demanda</h2>
+        <h2>Home do Operador</h2>
+
         <div class="row">
           <div>
-            <label>Data</label>
+            <label>Data do diário</label>
             <input id="opDate" type="date"/>
+            <div class="muted" style="margin-top:6px" id="opHomeHint">—</div>
           </div>
+          <div class="notice" id="opHomeStatus">
+            —
+          </div>
+        </div>
+
+        <div class="homeGrid">
+          <button class="bigBtn primary" id="goDemand" type="button">
+            <div class="t">1) Definir Demanda</div>
+            <div class="s" id="homeDemandTxt">—</div>
+          </button>
+
+          <button class="bigBtn" id="goStart" type="button">
+            <div class="t">2) Iniciar Turno</div>
+            <div class="s" id="homeStartTxt">—</div>
+          </button>
+
+          <button class="bigBtn" id="goEnd" type="button">
+            <div class="t">3) Encerrar Turno</div>
+            <div class="s" id="homeEndTxt">—</div>
+          </button>
+        </div>
+
+        <div class="divider"></div>
+        <div class="muted">Dica: clique na etapa, preencha, e finalize. Você volta pra Home automaticamente.</div>
+      </div>
+    </div>
+
+    <!-- PAGE: DEMANDA -->
+    <div class="page" id="pageDemand">
+      <div class="card">
+        <h2>Demanda</h2>
+
+        <div class="row">
           <div>
             <label>Usar demanda anterior?</label>
             <select id="usePrevDemand">
               <option value="sim">Sim</option>
               <option value="nao">Não (nova)</option>
             </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <div class="muted" id="demandStatus">—</div>
+            <button class="btn danger" type="button" id="btnCloseRental" style="display:none; margin-top:8px">Encerrar locação</button>
           </div>
         </div>
 
@@ -199,9 +238,8 @@
             </select>
           </div>
           <div>
-            <label>Status</label>
-            <div class="muted" id="demandStatus">—</div>
-            <button class="btn danger" type="button" id="btnCloseRental" style="display:none; margin-top:8px">Encerrar locação</button>
+            <label>Resumo</label>
+            <div class="muted" id="demandSummary">—</div>
           </div>
         </div>
 
@@ -232,18 +270,20 @@
         </div>
 
         <div class="rightBtns">
-          <button class="btn" type="button" id="btnSaveDemand">Salvar demanda</button>
-          <button class="btn primary" type="button" id="btnNextToStart">Próximo</button>
+          <button class="btn" type="button" id="btnBackHome1">Voltar (Home)</button>
+          <button class="btn primary" type="button" id="btnSaveDemand">Salvar Demanda</button>
         </div>
 
-        <div class="muted" id="demandSummary">—</div>
+        <div class="muted" style="margin-top:8px">Ao salvar, volta pra Home automaticamente ✅</div>
       </div>
     </div>
 
-    <!-- PAGE 2: INÍCIO -->
-    <div class="page" id="page2">
+    <!-- PAGE: INÍCIO -->
+    <div class="page" id="pageStart">
       <div class="card">
-        <h2>Início do dia</h2>
+        <h2>Início do turno</h2>
+
+        <div class="notice" id="startHint">—</div>
 
         <div class="row">
           <div>
@@ -335,21 +375,21 @@
         </div>
 
         <div class="divider"></div>
-        <label>Observações do início do dia</label>
+        <label>Observações do início do turno</label>
         <textarea id="start_notes"></textarea>
 
         <div class="rightBtns">
-          <button class="btn" type="button" id="btnBackToDemand">Voltar</button>
+          <button class="btn" type="button" id="btnBackHome2">Voltar (Home)</button>
           <button class="btn primary" type="button" id="btnStartShift">INICIAR TURNO</button>
         </div>
-        <div class="muted">Ao iniciar, vai para a próxima página automaticamente.</div>
+        <div class="muted" style="margin-top:8px">Ao iniciar, volta pra Home automaticamente ✅</div>
       </div>
     </div>
 
-    <!-- PAGE 3: ENCERRAMENTO -->
-    <div class="page" id="page3">
+    <!-- PAGE: ENCERRAMENTO -->
+    <div class="page" id="pageEnd">
       <div class="card">
-        <h2>Encerramento do dia</h2>
+        <h2>Encerramento do turno</h2>
         <div class="notice" id="endHint">—</div>
 
         <div class="row">
@@ -458,10 +498,10 @@
         </div>
 
         <div class="rightBtns">
-          <button class="btn" type="button" id="btnBackToStart">Voltar</button>
+          <button class="btn" type="button" id="btnBackHome3">Voltar (Home)</button>
           <button class="btn primary" type="button" id="btnFinishShift" disabled>ENCERRAR TURNO</button>
         </div>
-        <div class="muted">Ao encerrar, finaliza e volta para a página 1 automaticamente.</div>
+        <div class="muted" style="margin-top:8px">Ao encerrar, volta pra Home automaticamente ✅</div>
       </div>
     </div>
 
@@ -794,17 +834,13 @@ function showPreview(containerId, dataURL){
 const LS_SESSION = "diario_session_supabase_v1";
 let session = { username:null, role:null };
 
-function saveSession(){
-  localStorage.setItem(LS_SESSION, JSON.stringify(session));
-}
+function saveSession(){ localStorage.setItem(LS_SESSION, JSON.stringify(session)); }
 function loadSession(){
   const raw = localStorage.getItem(LS_SESSION);
   if(!raw) return null;
   try { return JSON.parse(raw); } catch(e){ return null; }
 }
-function clearSession(){
-  localStorage.removeItem(LS_SESSION);
-}
+function clearSession(){ localStorage.removeItem(LS_SESSION); }
 
 /* =======================
    DB CACHE (memória)
@@ -812,10 +848,10 @@ function clearSession(){
 let db = {
   machines: [],
   users: [],
-  demandByUser: {},   // username -> demand object
+  demandByUser: {},
   rentals: [],
-  drafts: {},         // key username__date -> draft.data
-  records: []         // array de records
+  drafts: {},
+  records: []
 };
 
 function draftKey(username, date){ return `${username}__${date}`; }
@@ -831,7 +867,6 @@ async function pingSupabase(){
   const { error } = await sb.from("machines").select("id").limit(1);
   return !error;
 }
-
 async function loadMachines(){
   const { data, error } = await sb.from("machines").select("*").order("created_at", {ascending:true});
   if(error) throw error;
@@ -901,7 +936,6 @@ async function upsertDemand(username, d){
   if(error) throw error;
   db.demandByUser[username] = d;
 }
-
 async function ensureRentalIfLocacao(username, userMachineId, d){
   if(d.type!=="locacao") return;
   const r = await loadActiveRentalFor(username);
@@ -916,7 +950,6 @@ async function ensureRentalIfLocacao(username, userMachineId, d){
   });
   if(error) throw error;
 }
-
 async function closeRental(username){
   const r = await loadActiveRentalFor(username);
   if(!r) return null;
@@ -926,21 +959,16 @@ async function closeRental(username){
   if(error) throw error;
   return true;
 }
-
 async function saveDraft(username, date, draftData){
-  const { error } = await sb.from("drafts").upsert({
-    username, date, data: draftData
-  }, { onConflict: "username,date" });
+  const { error } = await sb.from("drafts").upsert({ username, date, data: draftData }, { onConflict: "username,date" });
   if(error) throw error;
   db.drafts[draftKey(username,date)] = draftData;
 }
-
 async function deleteDraft(username, date){
   const { error } = await sb.from("drafts").delete().eq("username", username).eq("date", date);
   if(error) throw error;
   delete db.drafts[draftKey(username,date)];
 }
-
 async function insertRecord(recordObj){
   const hours = Number(recordObj.hoursWorked || 0);
   const fuelLiters = recordObj.fuel?.yes ? Number(recordObj.fuel.liters||0) : 0;
@@ -971,12 +999,8 @@ function findUserByUsername(username){
   const nu = normalizeLogin(username);
   return db.users.find(u => normalizeLogin(u.username) === nu) || null;
 }
-function findUserById(id){
-  return db.users.find(u => u.id === id) || null;
-}
-function findMachineById(id){
-  return db.machines.find(m => m.id === id) || null;
-}
+function findUserById(id){ return db.users.find(u => u.id === id) || null; }
+function findMachineById(id){ return db.machines.find(m => m.id === id) || null; }
 
 /* =======================
    VIEWS
@@ -1002,28 +1026,22 @@ function showAdmin(){
 }
 
 /* =======================
-   WIZARD (Operador)
+   OPERADOR: NAVEGAÇÃO (Home + Páginas)
    ======================= */
-let currentStep = 1;
-function setStep(step){
-  currentStep = step;
-  $("page1").classList.toggle("active", step===1);
-  $("page2").classList.toggle("active", step===2);
-  $("page3").classList.toggle("active", step===3);
-
-  $("dot1").classList.toggle("active", step===1);
-  $("dot2").classList.toggle("active", step===2);
-  $("dot3").classList.toggle("active", step===3);
-
-  const hints = {
-    1: "Defina a demanda e avance",
-    2: "Preencha início e inicie o turno",
-    3: "Preencha no fim do dia e encerre"
-  };
-  $("wizHint").textContent = hints[step] || "—";
-
+function showOpPage(pageId){
+  // pages: opHome, pageDemand, pageStart, pageEnd
+  ["opHome","pageDemand","pageStart","pageEnd"].forEach(id=>{
+    $(id).classList.toggle("active", id===pageId);
+  });
   window.scrollTo({top:0, behavior:"smooth"});
 }
+function goHome(){
+  showOpPage("opHome");
+  updateHomeCards();
+}
+function goDemand(){ showOpPage("pageDemand"); }
+function goStart(){ showOpPage("pageStart"); }
+function goEnd(){ showOpPage("pageEnd"); }
 
 /* =======================
    DEMANDA / LOCAÇÃO (UI)
@@ -1109,6 +1127,8 @@ async function saveDemand(){
 
   toast("Demanda salva (sincronizada) ✅");
   await updateDemandTypeUI();
+  updateHomeCards();
+  goHome();
 }
 async function closeRentalUI(){
   const ok = confirm("Encerrar a locação agora?");
@@ -1116,10 +1136,8 @@ async function closeRentalUI(){
   const done = await closeRental(session.username);
   if(!done){ toast("Nenhuma locação ativa"); return; }
 
-  // limpa demanda se era locação
   const current = db.demandByUser[session.username];
   if(current?.type==="locacao"){
-    // remove do banco
     await sb.from("demands").delete().eq("username", session.username);
     db.demandByUser[session.username] = null;
   }
@@ -1128,6 +1146,7 @@ async function closeRentalUI(){
   setDemandUI(null);
   toast("Locação encerrada ✅");
   await updateDemandTypeUI();
+  updateHomeCards();
 }
 
 /* =======================
@@ -1223,7 +1242,6 @@ function calcFuel(){
     $("fuel_lph").value = "";
   }
 }
-
 function lockStartFields(lock){
   $("hm_start").disabled = lock;
   $("hm_start_photo").disabled = lock;
@@ -1248,7 +1266,6 @@ function lockStartFields(lock){
 
   $("start_notes").disabled = lock;
 }
-
 function resetStartFields(){
   $("hm_start").value = "";
   $("hm_start_photo").value = "";
@@ -1282,7 +1299,6 @@ function resetEndFields(){
   $("fuel_preview").innerHTML="";
   $("fuelBlock").style.display="none";
 }
-
 function updateTurnInfo(){
   const date = $("opDate").value;
   const d = db.drafts[draftKey(session.username, date)] || null;
@@ -1295,24 +1311,25 @@ function updateTurnInfo(){
   }else{
     $("opTurnInfo").innerHTML =
       `<b>Turno:</b> <span class="badge">NÃO INICIADO</span><br>` +
-      `Inicie o turno na página 2.`;
-    $("endHint").innerHTML = `Inicie o turno primeiro para liberar esta página.`;
+      `Inicie o turno na etapa "Iniciar Turno".`;
+    $("endHint").innerHTML = `Inicie o turno primeiro para liberar esta etapa.`;
   }
+  updateHomeCards();
 }
 
 async function startShift(){
   const date = $("opDate").value;
-  if(!date){ toast("Selecione a data"); setStep(1); return; }
+  if(!date){ toast("Selecione a data na Home"); goHome(); return; }
 
   const user = findUserByUsername(session.username);
   if(!user || !user.active){ toast("Usuário inativo"); logout(); return; }
-  if(!user.machine_id){ toast("Admin precisa vincular uma máquina ao seu login"); setStep(1); return; }
+  if(!user.machine_id){ toast("Admin precisa vincular uma máquina ao seu login"); goHome(); return; }
 
   const saved = db.demandByUser[session.username] || null;
   const d = demandFromUI() || saved;
-  if(!d){ toast("Defina e salve a demanda"); setStep(1); return; }
-  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Demanda de obra incompleta"); setStep(1); return; }
-  if(d.type==="locacao" && (!d.client || !d.location)){ toast("Demanda de locação incompleta"); setStep(1); return; }
+  if(!d){ toast("Defina e salve a demanda"); goHome(); return; }
+  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Demanda de obra incompleta"); goHome(); return; }
+  if(d.type==="locacao" && (!d.client || !d.location)){ toast("Demanda de locação incompleta"); goHome(); return; }
 
   await upsertDemand(session.username, d);
   await ensureRentalIfLocacao(session.username, user.machine_id, d);
@@ -1353,14 +1370,14 @@ async function startShift(){
   lockStartFields(true);
   enableEndFields(true);
   updateTurnInfo();
-  toast("Bom trabalho! ✅ (sincronizado)");
-  setStep(3);
+  toast("Turno iniciado ✅ (sincronizado)");
+  goHome();
 }
 
 async function finishShift(){
   const date = $("opDate").value;
   const draft = db.drafts[draftKey(session.username, date)] || null;
-  if(!draft){ toast("Inicie o turno primeiro"); setStep(2); return; }
+  if(!draft){ toast("Inicie o turno primeiro"); goHome(); return; }
 
   const hmEnd = Number($("hm_end").value);
   if(!Number.isFinite(hmEnd)){ toast("Preencha horímetro final"); return; }
@@ -1431,7 +1448,7 @@ async function finishShift(){
   resetStartFields();
   resetEndFields();
   updateTurnInfo();
-  setStep(1);
+  goHome();
 }
 
 /* =======================
@@ -1447,6 +1464,7 @@ async function loadDraftToUIIfExists(){
     resetStartFields();
     resetEndFields();
     updateTurnInfo();
+    $("startHint").innerHTML = `Preencha os dados do início e clique <b>INICIAR TURNO</b>.`;
     return;
   }
 
@@ -1480,7 +1498,56 @@ async function loadDraftToUIIfExists(){
 
   lockStartFields(true);
   enableEndFields(true);
+  $("startHint").innerHTML = `Turno já foi iniciado hoje. Você pode ir para <b>Encerrar Turno</b> quando terminar.`;
   updateTurnInfo();
+}
+
+/* =======================
+   HOME: STATUS + BOTÕES
+   ======================= */
+function updateHomeCards(){
+  const date = $("opDate").value;
+  const dDraft = db.drafts[draftKey(session.username, date)] || null;
+  const demSaved = db.demandByUser[session.username] || null;
+
+  // Demanda
+  $("homeDemandTxt").textContent = demSaved ? formatDemand(demSaved, null) : "Nenhuma demanda salva ainda.";
+
+  // Turno (draft)
+  if(dDraft){
+    $("homeStartTxt").innerHTML = `Turno <b>RODANDO</b> • Iniciado: ${String(dDraft.startedAtISO).slice(11,16)} • Horímetro: ${dDraft.hmStart}`;
+  }else{
+    $("homeStartTxt").textContent = "Turno ainda não iniciado para esta data.";
+  }
+
+  // Encerramento
+  if(dDraft){
+    $("homeEndTxt").textContent = "Liberado: preencha e encerre quando terminar ✅";
+  }else{
+    $("homeEndTxt").textContent = "Bloqueado: inicie o turno primeiro.";
+  }
+
+  // Botões: regras simples
+  const hasDemand = !!demSaved;
+  $("goStart").disabled = !hasDemand || !!dDraft;   // não inicia se não tem demanda; nem se já está rodando
+  $("goEnd").disabled = !dDraft;                    // só encerra se tem draft
+
+  // estilos dos cartões
+  $("goDemand").className = "bigBtn primary";
+  $("goStart").className = "bigBtn " + (dDraft ? "warn" : (hasDemand ? "ok" : "bad"));
+  $("goEnd").className = "bigBtn " + (dDraft ? "ok" : "bad");
+
+  // resumo geral
+  let statusHTML = "";
+  statusHTML += `<b>Demanda:</b> ${hasDemand ? `<span class="badge ok">OK</span>` : `<span class="badge bad">Falta</span>`}<br>`;
+  statusHTML += `<b>Turno:</b> ${dDraft ? `<span class="badge ok">Rodando</span>` : `<span class="badge">Não iniciado</span>`}<br>`;
+  statusHTML += `<b>Encerramento:</b> ${dDraft ? `<span class="badge warn">Pendente</span>` : `<span class="badge">—</span>`}`;
+  $("opHomeStatus").innerHTML = statusHTML;
+
+  // dica
+  if(!hasDemand) $("opHomeHint").textContent = "Comece definindo a demanda do dia.";
+  else if(!dDraft) $("opHomeHint").textContent = "Agora você pode iniciar o turno.";
+  else $("opHomeHint").textContent = "Quando finalizar o dia, encerre o turno.";
 }
 
 /* =======================
@@ -1513,8 +1580,9 @@ async function initOperator(){
 
   await loadDraftToUIIfExists();
 
-  const d = db.drafts[draftKey(session.username, $("opDate").value)] || null;
-  setStep(d ? 3 : 1);
+  // abre home sempre
+  showOpPage("opHome");
+  updateHomeCards();
 }
 
 /* =======================
@@ -1545,12 +1613,9 @@ function setupAdminTabs(){
    ======================= */
 async function machineStatusToday(){
   const today = todayStr();
-
-  // drafts de hoje
   const { data: drafts, error: e1 } = await sb.from("drafts").select("*").eq("date", today);
   if(e1) throw e1;
 
-  // records de hoje
   const { data: recs, error: e2 } = await sb.from("records").select("*").eq("date", today);
   if(e2) throw e2;
 
@@ -1602,7 +1667,6 @@ async function renderMachineStatusTable(){
     </tr>
   `).join("");
 }
-
 async function refreshAdmin(){
   await loadMachines();
   await renderMachineStatusTable();
@@ -1637,7 +1701,6 @@ async function refreshAdmin(){
    ADMIN: MACHINES CRUD
    ======================= */
 let editingMachineId = null;
-
 function machineStatusLabel(s){
   const map = { disponivel:"Disponível", operando:"Operando", parada:"Parada", manutencao:"Manutenção", locada:"Locada" };
   return map[s] || s || "—";
@@ -1881,7 +1944,6 @@ async function renderRecordsTable(){
     `;
   }).join("") || `<tr><td colspan="8" class="muted">Sem registros no período.</td></tr>`;
 }
-
 async function deleteRecord(id){
   if(!confirm("Apagar este registro?")) return;
   const { error } = await sb.from("records").delete().eq("id", id);
@@ -1900,9 +1962,10 @@ function openModal(title, sub, html){
   $("modalBody").innerHTML = html || "";
   $("modalBack").style.display = "flex";
 }
-function closeModal(){
-  $("modalBack").style.display = "none";
-}
+function closeModal(){ $("modalBack").style.display = "none"; }
+$("btnModalClose").onclick = closeModal;
+$("modalBack").onclick = (e)=>{ if(e.target.id==="modalBack") closeModal(); };
+
 async function viewRecord(id){
   const { data, error } = await sb.from("records").select("*").eq("id", id).maybeSingle();
   if(error || !data){ toast("Registro não encontrado"); return; }
@@ -1974,12 +2037,11 @@ async function viewRecord(id){
 
     ${photoHTML}
   `;
-
   openModal("Registro", `${r.machineName || "—"} • ${r.operatorName || "—"}`, html);
 }
 
 /* =======================
-   EXPORT CSV (do banco)
+   EXPORT CSV
    ======================= */
 function csvCell(v){
   const s = (v===null || v===undefined) ? "" : String(v);
@@ -2016,8 +2078,7 @@ async function exportCSV(){
     lines.push([
       row.id, row.date, r.machineName||row.machine_name||"", r.operatorName||row.operator_name||"", row.username,
       dem.type||"", dem.obraName||"", dem.obraLocation||"", dem.client||"", dem.location||"",
-      r.hmStart??"", r.hmEnd??"", r.hoursWorked??"", r.hoursStopped??"", r.stopReason
-, r.stopDetail??"", r.dayNotes??"",
+      r.hmStart??"", r.hmEnd??"", r.hoursWorked??"", r.hoursStopped??"", r.stopReason||"", r.stopDetail??"", r.dayNotes??"",
       fu.yes ? "sim" : "nao", fu.type||"", fu.liters??"", fu.total??"", fu.pricePerLiter??"", fu.lph??"", fu.who||"",
       r.avaria ? "sim" : "nao", av.category||"", av.severity||"", av.canOperate||"", av.previous||"", av.desc||""
     ].map(csvCell).join(","));
@@ -2059,23 +2120,21 @@ async function doLogin(){
   if(session.role === "admin"){
     showAdmin();
     setupAdminTabs();
-    // defaults de datas
     $("ad_from").value = todayStr();
     $("ad_to").value = todayStr();
     $("rep_from").value = todayStr();
     $("rep_to").value = todayStr();
     await refreshAdmin();
     $("adminConn").textContent = "Conexão: OK ✅";
-    attachRealtimeSubscriptions(); // admin também acompanha em tempo real
+    attachRealtimeSubscriptions();
   }else{
     showOperator();
     await initOperator();
-    attachRealtimeSubscriptions(); // operador também acompanha (pra draft/records refletirem)
+    attachRealtimeSubscriptions();
   }
 
   toast("Entrou ✅");
 }
-
 function logout(){
   session = { username:null, role:null };
   clearSession();
@@ -2096,10 +2155,8 @@ function attachRealtimeSubscriptions(){
     }
   }catch(e){}
 
-  // Um canal único pra atualizar cache e telas quando alguém salvar.
   rtChannel = sb.channel("diario_realtime_v1");
 
-  // Atualiza máquinas
   rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"machines" }, async () => {
     await loadMachines();
     if(session.role === "admin"){
@@ -2108,17 +2165,16 @@ function attachRealtimeSubscriptions(){
       await renderMachineStatusTable();
       await refreshAdmin();
     }else{
-      // operador só precisa do nome da máquina caso admin altere vínculo
       await loadUsers();
       const u = findUserByUsername(session.username);
       if(u){
         $("opInfo").innerHTML =
           `<b>Operador:</b> ${esc(u.name)}<br><b>Máquina:</b> ${esc(machineName(u.machine_id))}`;
       }
+      updateHomeCards();
     }
   });
 
-  // Atualiza usuários (vínculo/ativo/senha)
   rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"users" }, async () => {
     await loadUsers();
     if(session.role === "admin"){
@@ -2134,32 +2190,29 @@ function attachRealtimeSubscriptions(){
       $("pillName").textContent = u.name || u.username;
       $("opInfo").innerHTML =
         `<b>Operador:</b> ${esc(u.name)}<br><b>Máquina:</b> ${esc(machineName(u.machine_id))}`;
+      updateHomeCards();
     }
   });
 
-  // Drafts (turno rodando)
   rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"drafts" }, async (payload) => {
     const row = payload?.new || payload?.old;
     if(!row) return;
 
     if(session.role === "admin"){
-      // dashboard de hoje muda se draft entra/sai
       await renderMachineStatusTable();
       await refreshAdmin();
     }else{
-      // operador: se for o dele e mesma data, recarrega UI do draft
       if(row.username === session.username && row.date === $("opDate").value){
         await loadDraftToUIIfExists();
+        updateHomeCards();
       }
     }
   });
 
-  // Records (turno encerrado)
   rtChannel.on("postgres_changes", { event:"*", schema:"public", table:"records" }, async () => {
     if(session.role === "admin"){
       await renderMachineStatusTable();
       await refreshAdmin();
-      // se estiver na aba registros, atualiza
       const tabActive = document.querySelector(".tab.active")?.dataset?.tab;
       if(tabActive === "records"){
         await renderRecordsTable();
@@ -2187,12 +2240,16 @@ $("demandType").onchange = updateDemandTypeUI;
 $("btnSaveDemand").onclick = saveDemand;
 $("btnCloseRental").onclick = closeRentalUI;
 
-$("btnNextToStart").onclick = ()=> setStep(2);
-$("btnBackToDemand").onclick = ()=> setStep(1);
-$("btnBackToStart").onclick = ()=> setStep(2);
-
 $("btnStartShift").onclick = startShift;
 $("btnFinishShift").onclick = finishShift;
+
+$("btnBackHome1").onclick = goHome;
+$("btnBackHome2").onclick = goHome;
+$("btnBackHome3").onclick = goHome;
+
+$("goDemand").onclick = ()=>{ goDemand(); };
+$("goStart").onclick = ()=>{ goStart(); };
+$("goEnd").onclick = ()=>{ goEnd(); };
 
 $("usePrevDemand").onchange = async ()=>{
   const prev = db.demandByUser[session.username] || null;
@@ -2228,8 +2285,8 @@ $("hm_end").oninput = ()=>{
 $("opDate").onchange = async ()=>{
   await loadDraftToUIIfExists();
   updateTurnInfo();
-  const d = db.drafts[draftKey(session.username, $("opDate").value)] || null;
-  setStep(d ? 3 : 1);
+  updateHomeCards();
+  goHome();
 };
 
 $("hm_start_photo").onchange = async ()=>{
@@ -2270,7 +2327,7 @@ $("btnForceRefresh").onclick = async ()=>{
   toast("Atualizado do banco ✅");
 };
 
-/* Expor algumas funções pro onclick das tabelas */
+/* Expor funções pro onclick das tabelas */
 window.editMachine = editMachine;
 window.deleteMachine = deleteMachine;
 window.editUser = editUser;
@@ -2285,7 +2342,6 @@ window.deleteRecord = deleteRecord;
 (async function boot(){
   showLogin();
 
-  // Estado conexão (ping simples)
   try{
     const ok = await pingSupabase();
     $("connState").textContent = ok ? "Conexão: OK ✅" : "Conexão: Falhou";
@@ -2293,16 +2349,12 @@ window.deleteRecord = deleteRecord;
     $("connState").textContent = "Conexão: Erro";
   }
 
-  // Auto-login
   const saved = loadSession();
   if(saved?.username){
     session = saved;
     $("loginUser").value = saved.username;
-    // não salva senha; usuário clica entrar (ou pode digitar senha)
-    // Se quiser login 100% automático, precisa auth real do Supabase.
   }
 })();
 </script>
 </body>
 </html>
-
