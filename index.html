@@ -58,8 +58,6 @@
     th,td{border-bottom:1px solid var(--line);padding:10px;font-size:12px;vertical-align:top;text-align:left}
     th{background:#fafafa;color:var(--muted)}
     tr:last-child td{border-bottom:none}
-
-    /* Wizard (celular: vira "páginas") */
     .wizardBar{
       display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;
       padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;
@@ -82,8 +80,6 @@
     @media(max-width:720px){
       .page .card{min-height: calc(100vh - 170px);}
     }
-
-    /* Modal */
     .modalBack{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:300;align-items:center;justify-content:center;padding:14px}
     .modal{max-width:900px;width:100%;background:#fff;border-radius:14px;border:1px solid var(--line);box-shadow:var(--shadow);padding:14px;max-height:85vh;overflow:auto}
     .modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -98,7 +94,7 @@
       <div class="logo"></div>
       <div>
         <h1>Diário de Máquinas</h1>
-        <small>Admin completo • Operador em páginas (celular)</small>
+        <small>Local (neste aparelho) • Admin + Operador</small>
       </div>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
@@ -116,7 +112,7 @@
     <div class="row">
       <div>
         <label>Usuário</label>
-        <input id="loginUser" autocomplete="username" placeholder="ex.: op1 / admin"/>
+        <input id="loginUser" autocomplete="username" placeholder="ex.: admin / joao"/>
       </div>
       <div>
         <label>Senha</label>
@@ -132,7 +128,7 @@
         </select>
       </div>
       <div class="muted" style="align-self:end">
-        Dica: use como site (link) para funcionar perfeito em Android e iPhone.
+        Admin padrão: <b>admin / 1234</b>
       </div>
     </div>
     <div class="rightBtns">
@@ -140,7 +136,7 @@
     </div>
   </div>
 
-  <!-- OPERADOR (WIZARD) -->
+  <!-- OPERADOR -->
   <div id="viewOperator" style="display:none">
 
     <div class="card">
@@ -468,7 +464,6 @@
 
   <!-- ADMIN -->
   <div id="viewAdmin" style="display:none">
-
     <div class="card">
       <h2>Admin</h2>
       <div class="tabs">
@@ -516,7 +511,7 @@
       </div>
       <div class="row">
         <div class="notice"><b>Avarias graves:</b> <span id="kpi_grave">0</span></div>
-        <div class="notice"><b>Máquinas sem diário hoje:</b> <span id="kpi_sem">0</span></div>
+        <div class="notice"><b>Máquinas sem diário no período:</b> <span id="kpi_sem">0</span></div>
       </div>
     </div>
 
@@ -573,7 +568,7 @@
           <tbody id="machines_body"></tbody>
         </table>
       </div>
-      <div class="muted">Dica: você pode cadastrar todas as máquinas aqui e depois vincular cada operador a uma máquina na aba “Operadores / Logins”.</div>
+      <div class="muted">Cadastre máquinas e depois vincule cada operador a uma máquina na aba “Operadores / Logins”.</div>
     </div>
 
     <!-- USERS -->
@@ -641,7 +636,7 @@
           <tbody id="users_body"></tbody>
         </table>
       </div>
-      <div class="muted">Você controla tudo aqui: cria operador, muda senha, vincula máquina, desativa.</div>
+      <div class="muted">Você cria operador, muda senha, vincula máquina, desativa.</div>
     </div>
 
     <!-- RECORDS -->
@@ -714,67 +709,9 @@
 const LS_KEY = "diario_maquinas_pro_v1";
 const LS_SESSION = "diario_session_pro_v1";
 
-function loadDB(){
-  const raw = localStorage.getItem(LS_KEY);
-  if(raw){
-    try { return JSON.parse(raw); } catch(e){}
-  }
-  // Seed inicial (você edita tudo no Admin depois)
-  return {
-    version: 1,
-    machines: [
-      { id: uid("m"), name:"Motoniveladora", type:"motoniveladora", model:"", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira 7d Laranja", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira 7d Amarelo", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Trator esteira D7", type:"trator", model:"", status:"disponivel", notes:"" },
-      { id: uid("m"), name:"Escavadeira", type:"escavadeira", model:"", status:"disponivel", notes:"" },
-    ],
-    users: [
-      { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
-      { id: uid("u"), name:"João Pedro", username:"Joaopedro", password:"4774", role:"operator", active:true, machineId:null },
-      { id: uid("u"), name:"Gabriel",    username:"Gabriel",   password:"7107", role:"operator", active:true, machineId:null },
-      { id: uid("u"), name:"Baiano",      username:"Baiano",    password:"7510", role:"operator", active:true, machineId:null },
-    ],
-    demandsByUser: {}, // username -> demand
-    rentals: [],
-    drafts: {},        // key username__date -> draft
-    records: []
-  };
+function uid(prefix="id"){
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
-let db = loadDB();
-
-function saveDB(){
-  try{
-    localStorage.setItem(LS_KEY, JSON.stringify(db));
-  }catch(e){
-    console.error(e);
-    toast("⚠️ Memória cheia! Exporte o CSV e apague dados/fotos antigos.");
-  }
-}
-
-function ensureAdmin(){
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const hasExactAdmin = db.users.some(u => u && u.username === "admin");
-  if(!hasExactAdmin){
-    // remove qualquer “admin disfarçado” se existir
-    db.users = db.users.filter(u => normalizeLogin(u.username) !== "admin");
-
-    db.users.unshift({
-      id: uid("u"),
-      name: "Administrador",
-      username: "admin",
-      password: "1234",
-      role: "admin",
-      active: true,
-      machineId: null
-    });
-    saveDB();
-  }
-}
-
-/* =======================
-   HELPERS
-   ======================= */
 function $(id){ return document.getElementById(id); }
 function esc(s){
   return String(s ?? "")
@@ -789,9 +726,6 @@ function toast(msg){
   clearTimeout(toast._timer);
   toast._timer = setTimeout(()=>t.style.display="none", 2200);
 }
-function uid(prefix="id"){
-  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
-}
 function todayStr(){
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -800,7 +734,6 @@ function todayStr(){
   return `${yyyy}-${mm}-${dd}`;
 }
 function nowISO(){ return new Date().toISOString(); }
-
 function normalizeLogin(s){
   return String(s || "")
     .toLowerCase()
@@ -810,12 +743,51 @@ function normalizeLogin(s){
     .trim();
 }
 
+function loadDB(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){
+    try { return JSON.parse(raw); } catch(e){}
+  }
+  return {
+    version: 1,
+    machines: [
+      { id: uid("m"), name:"Motoniveladora", type:"motoniveladora", model:"", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira 7D Laranja", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira 7D Amarelo", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira D7", type:"trator", model:"", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Escavadeira 22t", type:"escavadeira", model:"", status:"disponivel", notes:"" },
+    ],
+    users: [
+      { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
+      { id: uid("u"), name:"João Pedro", username:"joao", password:"1234", role:"operator", active:true, machineId:null },
+    ],
+    demandsByUser: {},
+    rentals: [],
+    drafts: {},
+    records: []
+  };
+}
+let db = loadDB();
+
+function saveDB(){
+  try{
+    localStorage.setItem(LS_KEY, JSON.stringify(db));
+  }catch(e){
+    console.error(e);
+    toast("⚠️ Memória cheia! Exporte o CSV e apague dados/fotos antigos.");
+  }
+}
+function ensureAdmin(){
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const hasExactAdmin = db.users.some(u => u && normalizeLogin(u.username) === "admin");
+  if(!hasExactAdmin){
+    db.users.unshift({ id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null });
+    saveDB();
+  }
+}
 function findUserByUsername(username){
   const nu = normalizeLogin(username);
   return db.users.find(u => normalizeLogin(u.username) === nu) || null;
-}
-function findUserById(id){
-  return db.users.find(u => u.id === id) || null;
 }
 function findMachineById(id){
   return db.machines.find(m => m.id === id) || null;
@@ -823,39 +795,6 @@ function findMachineById(id){
 function machineName(id){
   if(!id) return "—";
   return findMachineById(id)?.name || "—";
-}
-function draftKey(username, date){ return `${username}__${date}`; }
-function getDraft(username, date){ return db.drafts[draftKey(username,date)] || null; }
-function setDraft(username, date, draft){ db.drafts[draftKey(username,date)] = draft; saveDB(); }
-function clearDraft(username, date){ delete db.drafts[draftKey(username,date)]; saveDB(); }
-
-async function fileToCompressedDataURL(file, maxW=900, quality=0.6){
-  if(!file) return null;
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.src = url;
-  await img.decode();
-
-  let w = img.width, h = img.height;
-  const ratio = Math.min(1, maxW / w);
-  w = Math.round(w * ratio);
-  h = Math.round(h * ratio);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, w, h);
-  URL.revokeObjectURL(url);
-
-  return canvas.toDataURL("image/jpeg", quality);
-}
-function showPreview(containerId, dataURL){
-  const box = $(containerId);
-  box.innerHTML = "";
-  if(!dataURL) return;
-  const im = document.createElement("img");
-  im.src = dataURL;
-  box.appendChild(im);
 }
 
 /* =======================
@@ -899,6 +838,89 @@ function showAdmin(){
 }
 
 /* =======================
+   MODAL
+   ======================= */
+function openModal(title, sub, html){
+  $("modalTitle").textContent = title || "Detalhes";
+  $("modalSub").textContent = sub || "";
+  $("modalBody").innerHTML = html || "";
+  $("modalBack").style.display = "flex";
+}
+function closeModal(){
+  $("modalBack").style.display = "none";
+}
+
+/* =======================
+   AUTH
+   ======================= */
+function login(){
+  ensureAdmin();
+  const u = $("loginUser").value.trim();
+  const p = $("loginPass").value;
+  const user = findUserByUsername(u);
+  if(!user || !user.active){ toast("Usuário inválido ou inativo"); return; }
+  if(String(user.password) !== String(p)){ toast("Senha incorreta"); return; }
+
+  session = { username: user.username, role: user.role };
+  $("pillName").textContent = user.name || user.username;
+
+  if($("keepLogged").value === "sim") saveSession();
+  else clearSession();
+
+  if(user.role === "admin"){
+    showAdmin();
+    initAdmin();
+  }else{
+    showOperator();
+    initOperator();
+  }
+}
+function logout(){
+  session = { username:null, role:null };
+  clearSession();
+  showLogin();
+}
+
+/* =======================
+   IMAGEM (compressão)
+   ======================= */
+async function fileToCompressedDataURL(file, maxW=900, quality=0.6){
+  if(!file) return null;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.src = url;
+  await img.decode();
+
+  let w = img.width, h = img.height;
+  const ratio = Math.min(1, maxW / w);
+  w = Math.round(w * ratio);
+  h = Math.round(h * ratio);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+
+  return canvas.toDataURL("image/jpeg", quality);
+}
+function showPreview(containerId, dataURL){
+  const box = $(containerId);
+  box.innerHTML = "";
+  if(!dataURL) return;
+  const im = document.createElement("img");
+  im.src = dataURL;
+  box.appendChild(im);
+}
+
+/* =======================
+   DRAFTS
+   ======================= */
+function draftKey(username, date){ return `${normalizeLogin(username)}__${date}`; }
+function getDraft(username, date){ return db.drafts[draftKey(username,date)] || null; }
+function setDraft(username, date, draft){ db.drafts[draftKey(username,date)] = draft; saveDB(); }
+function clearDraft(username, date){ delete db.drafts[draftKey(username,date)]; saveDB(); }
+
+/* =======================
    WIZARD (Operador)
    ======================= */
 let currentStep = 1;
@@ -918,7 +940,6 @@ function setStep(step){
     3: "Preencha no fim do dia e encerre"
   };
   $("wizHint").textContent = hints[step] || "—";
-
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
@@ -926,7 +947,7 @@ function setStep(step){
    DEMANDA / LOCAÇÃO
    ======================= */
 function activeRentalForUser(username){
-  return db.rentals.find(r => r.username===username && r.status==="ativa") || null;
+  return db.rentals.find(r => normalizeLogin(r.username)===normalizeLogin(username) && r.status==="ativa") || null;
 }
 function formatDemand(d){
   if(!d) return "—";
@@ -962,7 +983,7 @@ function setDemandUI(d){
   updateDemandSummary();
 }
 function updateDemandSummary(){
-  const saved = db.demandsByUser[session.username] || null;
+  const saved = db.demandsByUser[normalizeLogin(session.username)] || null;
   const d = demandFromUI() || saved;
   $("demandSummary").innerHTML = `<b>Demanda atual:</b> ${esc(formatDemand(d))}`;
 }
@@ -991,6 +1012,7 @@ function updateDemandTypeUI(){
 function saveDemand(){
   const d = demandFromUI();
   if(!d){ toast("Selecione tipo de demanda"); return; }
+
   if(d.type==="obra"){
     if(!d.obraName || !d.obraLocation){ toast("Preencha nome e localização da obra"); return; }
   }
@@ -998,10 +1020,11 @@ function saveDemand(){
     if(!d.client || !d.location){ toast("Preencha cliente e localização"); return; }
     const r = activeRentalForUser(session.username);
     if(!r){
+      const user = findUserByUsername(session.username);
       db.rentals.push({
         id: uid("rent"),
         username: session.username,
-        machineId: findUserByUsername(session.username)?.machineId || null,
+        machineId: user?.machineId || null,
         client: d.client,
         location: d.location,
         startISO: nowISO(),
@@ -1010,7 +1033,8 @@ function saveDemand(){
       });
     }
   }
-  db.demandsByUser[session.username] = d;
+
+  db.demandsByUser[normalizeLogin(session.username)] = d;
   saveDB();
   toast("Demanda salva");
   updateDemandTypeUI();
@@ -1024,9 +1048,9 @@ function closeRental(){
   saveDB();
   toast("Locação encerrada");
 
-  const d = db.demandsByUser[session.username];
+  const d = db.demandsByUser[normalizeLogin(session.username)];
   if(d?.type==="locacao"){
-    delete db.demandsByUser[session.username];
+    delete db.demandsByUser[normalizeLogin(session.username)];
     saveDB();
   }
   $("demandType").value = "";
@@ -1128,7 +1152,6 @@ function calcFuel(){
     $("fuel_lph").value = "";
   }
 }
-
 function lockStartFields(lock){
   $("hm_start").disabled = lock;
   $("hm_start_photo").disabled = lock;
@@ -1149,23 +1172,18 @@ function lockStartFields(lock){
   $("av_prev").disabled = lock;
   $("av_photo").disabled = lock;
   $("av_desc").disabled = lock;
-
   $("av_cat").disabled = lock || ($("hasAvaria").value !== "sim");
 
   $("start_notes").disabled = lock;
 }
-
 function resetStartFields(){
   $("hm_start").value = "";
   $("hm_start_photo").value = "";
   $("hm_start_preview").innerHTML = "";
-
   $("ck_oil").value="OK"; $("ck_cool").value="OK"; $("ck_hyd").value="OK"; $("ck_leak").value="OK";
   $("ck_air").value="OK"; $("ck_track").value="OK"; $("ck_panel").value="OK"; $("ck_safe").value="OK";
-
   $("hasAvaria").value="nao";
   setAvariaEnabled(false);
-
   $("start_notes").value="";
 }
 function resetEndFields(){
@@ -1188,7 +1206,6 @@ function resetEndFields(){
   $("fuel_preview").innerHTML="";
   $("fuelBlock").style.display="none";
 }
-
 function updateTurnInfo(){
   const date = $("opDate").value;
   const d = getDraft(session.username, date);
@@ -1214,7 +1231,7 @@ async function startShift(){
   if(!user || !user.active){ toast("Usuário inativo"); logout(); return; }
   if(!user.machineId){ toast("Admin precisa vincular uma máquina ao seu login"); setStep(1); return; }
 
-  const saved = db.demandsByUser[session.username] || null;
+  const saved = db.demandsByUser[normalizeLogin(session.username)] || null;
   const d = demandFromUI() || saved;
   if(!d){ toast("Defina e salve a demanda"); setStep(1); return; }
   if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Demanda de obra incompleta"); setStep(1); return; }
@@ -1273,7 +1290,7 @@ async function startShift(){
   lockStartFields(true);
   enableEndFields(true);
   updateTurnInfo();
-  toast("Bom trabalho! ✅");
+  toast("Turno iniciado ✅");
   setStep(3);
 }
 
@@ -1314,13 +1331,11 @@ async function finishShift(){
     machineId: draft.machineId,
     machineName: draft.machineName,
     demand: draft.demand,
-
     hmStart: draft.hmStart,
     hmStartPhoto: draft.hmStartPhoto,
     checklist: draft.checklist,
     avaria: draft.avaria,
     startNotes: draft.startNotes,
-
     hmEnd,
     hmEndPhoto,
     hoursWorked,
@@ -1328,7 +1343,6 @@ async function finishShift(){
     stopReason: $("stop_reason").value,
     stopDetail: $("stop_detail").value.trim(),
     dayNotes: $("day_notes").value.trim(),
-
     fuel: ($("fuel_yes").value === "sim") ? {
       yes:true,
       type: $("fuel_type").value,
@@ -1354,11 +1368,11 @@ async function finishShift(){
   updateTurnInfo();
   updateDemandSummary();
   setStep(1);
+
+  // Atualiza admin se estiver aberto em outro momento
+  if(session.role === "admin"){ initAdmin(); }
 }
 
-/* =======================
-   LOAD DRAFT (se já iniciou)
-   ======================= */
 function loadDraftToUIIfExists(){
   const date = $("opDate").value;
   const draft = getDraft(session.username, date);
@@ -1405,9 +1419,6 @@ function loadDraftToUIIfExists(){
   updateTurnInfo();
 }
 
-/* =======================
-   OPERATOR INIT
-   ======================= */
 function initOperator(){
   const user = findUserByUsername(session.username);
   $("opInfo").innerHTML =
@@ -1415,7 +1426,7 @@ function initOperator(){
 
   $("opDate").value = todayStr();
 
-  const prev = db.demandsByUser[session.username] || null;
+  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
   if(prev){
     $("prevDemandBox").style.display = "";
     $("prevDemandText").textContent = formatDemand(prev);
@@ -1437,19 +1448,426 @@ function initOperator(){
 }
 
 /* =======================
-   ADMIN (mantive igual ao seu)
+   ADMIN
    ======================= */
-/* ... (toda sua parte de ADMIN continua igual) ... */
+let editingMachineId = null;
+let editingUserId = null;
+
+function showAdminTab(tab){
+  const map = {
+    dash: $("ad_dash"),
+    machines: $("ad_machines"),
+    users: $("ad_users"),
+    records: $("ad_records"),
+    export: $("ad_export")
+  };
+  Object.keys(map).forEach(k => map[k].style.display = (k===tab) ? "" : "none");
+
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.classList.toggle("active", t.dataset.tab === tab);
+  });
+}
+
+function initAdmin(){
+  // Datas padrão
+  $("ad_from").value = $("ad_from").value || todayStr();
+  $("ad_to").value = $("ad_to").value || todayStr();
+  $("rep_from").value = $("rep_from").value || todayStr();
+  $("rep_to").value = $("rep_to").value || todayStr();
+
+  renderMachinesSelect();
+  renderMachinesTable();
+  renderUsersTable();
+  renderDashboard();
+  renderRecordsTable();
+}
+
+function renderMachinesSelect(){
+  const sel = $("u_machine");
+  sel.innerHTML = `<option value="">— (sem vincular)</option>` + db.machines.map(m=>(
+    `<option value="${esc(m.id)}">${esc(m.name)}</option>`
+  )).join("");
+}
+
+function renderMachinesTable(){
+  const tb = $("machines_body");
+  tb.innerHTML = db.machines.map(m => `
+    <tr>
+      <td>${esc(m.name)}</td>
+      <td>${esc(m.type)}</td>
+      <td>${esc(m.model)}</td>
+      <td>${esc(m.status)}</td>
+      <td>
+        <button class="btn" type="button" data-act="editM" data-id="${esc(m.id)}">Editar</button>
+        <button class="btn danger" type="button" data-act="delM" data-id="${esc(m.id)}">Excluir</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" class="muted">Nenhuma máquina cadastrada.</td></tr>`;
+
+  tb.querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.dataset.id;
+      if(b.dataset.act === "editM") editMachine(id);
+      if(b.dataset.act === "delM") deleteMachine(id);
+    };
+  });
+}
+
+function editMachine(id){
+  const m = findMachineById(id);
+  if(!m) return;
+  editingMachineId = id;
+  $("m_name").value = m.name || "";
+  $("m_type").value = m.type || "";
+  $("m_model").value = m.model || "";
+  $("m_status").value = m.status || "disponivel";
+  $("m_notes").value = m.notes || "";
+  toast("Editando máquina");
+}
+
+function deleteMachine(id){
+  if(!confirm("Excluir esta máquina?")) return;
+
+  // Desvincula usuários que estavam nela
+  db.users.forEach(u=>{
+    if(u.machineId === id) u.machineId = null;
+  });
+
+  db.machines = db.machines.filter(m => m.id !== id);
+  saveDB();
+  renderMachinesSelect();
+  renderMachinesTable();
+  renderUsersTable();
+  renderDashboard();
+  toast("Máquina excluída");
+}
+
+function saveMachine(){
+  const name = $("m_name").value.trim();
+  if(!name){ toast("Informe o nome da máquina"); return; }
+  const m = {
+    id: editingMachineId || uid("m"),
+    name,
+    type: $("m_type").value.trim(),
+    model: $("m_model").value.trim(),
+    status: $("m_status").value,
+    notes: $("m_notes").value.trim()
+  };
+  if(editingMachineId){
+    const idx = db.machines.findIndex(x=>x.id===editingMachineId);
+    if(idx>=0) db.machines[idx] = m;
+    editingMachineId = null;
+  }else{
+    db.machines.push(m);
+  }
+  saveDB();
+  $("m_name").value=""; $("m_type").value=""; $("m_model").value=""; $("m_status").value="disponivel"; $("m_notes").value="";
+  renderMachinesSelect();
+  renderMachinesTable();
+  renderDashboard();
+  toast("Máquina salva");
+}
+
+function renderUsersTable(){
+  const tb = $("users_body");
+  tb.innerHTML = db.users.map(u => `
+    <tr>
+      <td>${esc(u.name)}</td>
+      <td>${esc(u.username)}</td>
+      <td>${esc(u.role)}</td>
+      <td>${u.active ? "Sim" : "Não"}</td>
+      <td>${esc(machineName(u.machineId))}</td>
+      <td>
+        <button class="btn" type="button" data-act="editU" data-id="${esc(u.id)}">Editar</button>
+        ${normalizeLogin(u.username)==="admin" ? "" : `<button class="btn danger" type="button" data-act="delU" data-id="${esc(u.id)}">Excluir</button>`}
+      </td>
+    </tr>
+  `).join("");
+
+  tb.querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.dataset.id;
+      if(b.dataset.act === "editU") editUser(id);
+      if(b.dataset.act === "delU") deleteUser(id);
+    };
+  });
+}
+
+function editUser(id){
+  const u = db.users.find(x=>x.id===id);
+  if(!u) return;
+  editingUserId = id;
+  $("u_name").value = u.name || "";
+  $("u_user").value = u.username || "";
+  $("u_pass").value = u.password || "";
+  $("u_role").value = u.role || "operator";
+  $("u_active").value = u.active ? "true" : "false";
+  $("u_machine").value = u.machineId || "";
+  toast("Editando usuário");
+}
+
+function deleteUser(id){
+  const u = db.users.find(x=>x.id===id);
+  if(!u) return;
+  if(normalizeLogin(u.username)==="admin"){ toast("Não pode excluir o admin"); return; }
+  if(!confirm("Excluir este usuário?")) return;
+  db.users = db.users.filter(x=>x.id!==id);
+  saveDB();
+  renderUsersTable();
+  toast("Usuário excluído");
+}
+
+function saveUser(){
+  const name = $("u_name").value.trim();
+  const username = $("u_user").value.trim();
+  const password = $("u_pass").value;
+  if(!name || !username || !password){ toast("Preencha nome, usuário e senha"); return; }
+
+  const role = $("u_role").value;
+  const active = $("u_active").value === "true";
+  const machineId = $("u_machine").value || null;
+
+  // Valida usuário duplicado
+  const nu = normalizeLogin(username);
+  const other = db.users.find(x => normalizeLogin(x.username)===nu && x.id !== editingUserId);
+  if(other){ toast("Já existe esse usuário"); return; }
+
+  const u = {
+    id: editingUserId || uid("u"),
+    name,
+    username,
+    password,
+    role,
+    active,
+    machineId: role==="operator" ? machineId : null
+  };
+
+  if(editingUserId){
+    const idx = db.users.findIndex(x=>x.id===editingUserId);
+    if(idx>=0) db.users[idx] = u;
+    editingUserId = null;
+  }else{
+    db.users.push(u);
+  }
+
+  saveDB();
+  $("u_name").value=""; $("u_user").value=""; $("u_pass").value=""; $("u_role").value="operator"; $("u_active").value="true"; $("u_machine").value="";
+  renderUsersTable();
+  renderDashboard();
+  toast("Usuário salvo");
+}
+
+function demandText(d){
+  if(!d) return "—";
+  if(d.type==="obra") return `Obra: ${d.obraName || "?"} (${d.obraLocation || "?"})`;
+  if(d.type==="locacao") return `Locação: ${d.client || "?"} (${d.location || "?"})`;
+  return "—";
+}
+
+function renderDashboard(){
+  const dateFrom = $("ad_from").value || todayStr();
+  const dateTo = $("ad_to").value || todayStr();
+
+  const inRange = (rec)=>{
+    return rec.date >= dateFrom && rec.date <= dateTo;
+  };
+  const recs = db.records.filter(inRange);
+
+  // KPIs
+  const hours = recs.reduce((a,r)=>a + (Number(r.hoursWorked)||0),0);
+  const liters = recs.reduce((a,r)=>a + (r.fuel?.yes ? (Number(r.fuel.liters)||0) : 0),0);
+  const grave = recs.reduce((a,r)=>a + (r.avaria?.severity==="grave" ? 1 : 0),0);
+
+  $("kpi_hours").textContent = hours.toFixed(1);
+  $("kpi_liters").textContent = liters.toFixed(1);
+  $("kpi_grave").textContent = String(grave);
+
+  // Sem diário no período (máquinas que não aparecem)
+  const machineIdsInRecs = new Set(recs.map(r=>r.machineId));
+  const sem = db.machines.filter(m=>!machineIdsInRecs.has(m.id)).length;
+  $("kpi_sem").textContent = String(sem);
+
+  // Status hoje
+  const today = todayStr();
+  const lastByMachine = {};
+  db.records.forEach(r=>{
+    if(!lastByMachine[r.machineId] || r.createdAtISO > lastByMachine[r.machineId].createdAtISO){
+      lastByMachine[r.machineId] = r;
+    }
+  });
+
+  const body = $("mach_status_body");
+  body.innerHTML = db.machines.map(m=>{
+    const r = lastByMachine[m.id];
+    const demand = r ? demandText(r.demand) : "—";
+    const op = r ? r.operatorName : "—";
+    const hm = r ? `${r.hmStart} → ${r.hmEnd}` : "—";
+    const stBadge = r && r.date===today ? `<span class="badge ok">com diário</span>` : `<span class="badge">—</span>`;
+    return `
+      <tr>
+        <td>${esc(m.name)}</td>
+        <td>${stBadge}</td>
+        <td>${esc(op)}</td>
+        <td>${esc(hm)}</td>
+        <td>${esc(demand)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderRecordsTable(){
+  const from = $("rep_from").value || todayStr();
+  const to = $("rep_to").value || todayStr();
+  const recs = db.records
+    .filter(r=>r.date>=from && r.date<=to)
+    .sort((a,b)=> (b.date+a.createdAtISO).localeCompare(a.date+b.createdAtISO));
+
+  const tb = $("rep_body");
+  tb.innerHTML = recs.map(r=>{
+    const fuel = r.fuel?.yes ? `${Number(r.fuel.liters||0).toFixed(1)} L` : "—";
+    const av = r.avaria ? (r.avaria.severity==="grave" ? `<span class="badge bad">grave</span>` : `<span class="badge warn">${esc(r.avaria.severity)}</span>`) : "—";
+    return `
+      <tr>
+        <td>${esc(r.date)}</td>
+        <td>${esc(r.machineName)}</td>
+        <td>${esc(r.operatorName)}</td>
+        <td>${esc(demandText(r.demand))}</td>
+        <td>${esc(Number(r.hoursWorked||0).toFixed(1))}</td>
+        <td>${esc(fuel)}</td>
+        <td>${av}</td>
+        <td><button class="btn" type="button" data-id="${esc(r.id)}">Ver</button></td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="8" class="muted">Sem registros no período.</td></tr>`;
+
+  tb.querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=> showRecordDetails(b.dataset.id);
+  });
+}
+
+function showRecordDetails(id){
+  const r = db.records.find(x=>x.id===id);
+  if(!r) return;
+  const imgs = [];
+  if(r.hmStartPhoto) imgs.push(`<img src="${r.hmStartPhoto}">`);
+  if(r.hmEndPhoto) imgs.push(`<img src="${r.hmEndPhoto}">`);
+  if(r.avaria?.photo) imgs.push(`<img src="${r.avaria.photo}">`);
+  if(r.fuel?.photo) imgs.push(`<img src="${r.fuel.photo}">`);
+
+  const html = `
+    <div class="notice">
+      <b>Data:</b> ${esc(r.date)}<br>
+      <b>Máquina:</b> ${esc(r.machineName)}<br>
+      <b>Operador:</b> ${esc(r.operatorName)}<br>
+      <b>Demanda:</b> ${esc(demandText(r.demand))}<br>
+      <b>Horímetro:</b> ${esc(r.hmStart)} → ${esc(r.hmEnd)}<br>
+      <b>Horas:</b> ${esc(Number(r.hoursWorked||0).toFixed(1))}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notice">
+      <b>Checklist:</b><br>
+      Óleo: ${esc(r.checklist?.oil)} • Água: ${esc(r.checklist?.cool)} • Hidráulico: ${esc(r.checklist?.hyd)} • Vazamentos: ${esc(r.checklist?.leak)}<br>
+      Filtro ar: ${esc(r.checklist?.air)} • Esteira/Pneus: ${esc(r.checklist?.track)} • Painel: ${esc(r.checklist?.panel)} • Segurança: ${esc(r.checklist?.safe)}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notice">
+      <b>Avaria:</b> ${r.avaria ? esc(r.avaria.severity)+" • "+esc(r.avaria.category)+"<br>"+esc(r.avaria.desc) : "—"}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notice">
+      <b>Parada:</b> ${esc(Number(r.hoursStopped||0).toFixed(1))} h • ${esc(r.stopReason||"—")} • ${esc(r.stopDetail||"")}
+      <br><b>Obs:</b> ${esc(r.dayNotes||"—")}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notice">
+      <b>Abastecimento:</b> ${r.fuel?.yes ? `${esc(r.fuel.type)} • ${esc(r.fuel.liters)} L • R$ ${esc(r.fuel.total)} • ${esc(r.fuel.who)}` : "—"}
+    </div>
+
+    ${imgs.length ? `<div class="divider"></div><div class="preview">${imgs.join("")}</div>` : ""}
+  `;
+  openModal("Registro", `${r.date} • ${r.machineName}`, html);
+}
+
+function exportCSV(){
+  const rows = [];
+  const header = [
+    "date","machine","operator","demand_type","demand_name","demand_location",
+    "hm_start","hm_end","hours_worked","hours_stopped","stop_reason","stop_detail",
+    "fuel_yes","fuel_type","fuel_liters","fuel_total","fuel_price","fuel_lph",
+    "avaria_yes","avaria_category","avaria_severity","avaria_can_operate","avaria_previous","avaria_desc"
+  ];
+  rows.push(header);
+
+  db.records.forEach(r=>{
+    const d = r.demand || {};
+    rows.push([
+      r.date,
+      r.machineName,
+      r.operatorName,
+      d.type || "",
+      d.type==="obra" ? (d.obraName||"") : (d.client||""),
+      d.type==="obra" ? (d.obraLocation||"") : (d.location||""),
+      r.hmStart ?? "",
+      r.hmEnd ?? "",
+      r.hoursWorked ?? "",
+      r.hoursStopped ?? "",
+      r.stopReason ?? "",
+      r.stopDetail ?? "",
+      r.fuel?.yes ? "sim" : "nao",
+      r.fuel?.type ?? "",
+      r.fuel?.liters ?? "",
+      r.fuel?.total ?? "",
+      r.fuel?.pricePerLiter ?? "",
+      r.fuel?.lph ?? "",
+      r.avaria ? "sim" : "nao",
+      r.avaria?.category ?? "",
+      r.avaria?.severity ?? "",
+      r.avaria?.canOperate ?? "",
+      r.avaria?.previous ?? "",
+      (r.avaria?.desc ?? "").replace(/\r?\n/g," ")
+    ]);
+  });
+
+  const csv = rows.map(r=>r.map(v=>{
+    const s = String(v ?? "");
+    const needs = /[",\n;]/.test(s);
+    const safe = s.replaceAll('"','""');
+    return needs ? `"${safe}"` : safe;
+  }).join(";")).join("\n");
+
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `diario_maquinas_${todayStr()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function wipeAll(){
+  if(!confirm("Apagar tudo deste aparelho?")) return;
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_SESSION);
+  db = loadDB();
+  ensureAdmin();
+  saveDB();
+  toast("Apagado");
+  logout();
+}
 
 /* =======================
-   EXPORT / AUTH / ADMIN INIT / MODAL / etc
+   EVENTS
    ======================= */
-/* ... (tudo igual ao seu) ... */
-
-/* =======================
-   EVENTOS (UI)
-   ======================= */
-
 // LOGIN / LOGOUT
 $("btnLogin").onclick = login;
 $("btnLogout").onclick = logout;
@@ -1458,7 +1876,6 @@ $("btnLogout").onclick = logout;
 $("btnSaveDemand").onclick = saveDemand;
 $("btnCloseRental").onclick = closeRental;
 
-// ✅ CORRIGIDO: apenas UM onclick para btnNextToStart
 $("btnNextToStart").onclick = ()=>{
   const date = $("opDate").value;
   if(!date){ toast("Selecione a data"); return; }
@@ -1470,19 +1887,11 @@ $("btnNextToStart").onclick = ()=>{
   const d = demandFromUI();
   if(!d){ toast("Selecione o tipo de demanda"); return; }
 
-  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){
-    toast("Preencha nome e localização da obra");
-    return;
-  }
-  if(d.type==="locacao" && (!d.client || !d.location)){
-    toast("Preencha cliente e localização da locação");
-    return;
-  }
+  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Preencha nome e localização da obra"); return; }
+  if(d.type==="locacao" && (!d.client || !d.location)){ toast("Preencha cliente e localização da locação"); return; }
 
-  // salva demanda para o usuário
-  db.demandsByUser[session.username] = d;
+  db.demandsByUser[normalizeLogin(session.username)] = d;
 
-  // cria locação ativa se for locação e não tiver uma ativa
   if(d.type === "locacao"){
     const r = activeRentalForUser(session.username);
     if(!r){
@@ -1517,13 +1926,13 @@ $("opDate").onchange = ()=>{
 };
 
 $("usePrevDemand").onchange = ()=>{
-  const prev = db.demandsByUser[session.username] || null;
+  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
   if($("usePrevDemand").value==="sim" && prev) setDemandUI(prev);
   else setDemandUI(null);
 };
 
 $("btnUsePrev").onclick = ()=>{
-  const prev = db.demandsByUser[session.username] || null;
+  const prev = db.demandsByUser[normalizeLogin(session.username)] || null;
   if(!prev){ toast("Sem demanda anterior"); return; }
   setDemandUI(prev);
   toast("Demanda anterior aplicada");
@@ -1534,6 +1943,8 @@ $("btnNewDemand").onclick = ()=>{
   toast("Nova demanda");
 };
 
+$("demandType").onchange = updateDemandTypeUI;
+
 $("hasAvaria").onchange = ()=>{
   const enabled = ($("hasAvaria").value === "sim");
   setAvariaEnabled(enabled);
@@ -1541,10 +1952,7 @@ $("hasAvaria").onchange = ()=>{
 };
 
 $("hm_end").oninput = calcHours;
-$("fuel_yes").onchange = ()=>{
-  setFuelBlockVisible();
-  calcFuel();
-};
+$("fuel_yes").onchange = ()=>{ setFuelBlockVisible(); calcFuel(); };
 $("fuel_liters").oninput = calcFuel;
 $("fuel_total").oninput = calcFuel;
 
@@ -1576,22 +1984,41 @@ $("fuel_photo").onchange = async ()=>{
 $("btnStartShift").onclick = startShift;
 $("btnFinishShift").onclick = finishShift;
 
-/* MODAL */
+// Modal
 $("btnModalClose").onclick = closeModal;
-$("modalBack").onclick = (e)=>{
-  if(e.target === $("modalBack")) closeModal();
-};
-document.addEventListener("keydown",(e)=>{
-  if(e.key === "Escape") closeModal();
+$("modalBack").onclick = (e)=>{ if(e.target === $("modalBack")) closeModal(); };
+document.addEventListener("keydown",(e)=>{ if(e.key === "Escape") closeModal(); });
+
+// Admin tabs
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick = ()=>{
+    showAdminTab(t.dataset.tab);
+    if(t.dataset.tab==="dash") renderDashboard();
+    if(t.dataset.tab==="records") renderRecordsTable();
+    if(t.dataset.tab==="machines") renderMachinesTable();
+    if(t.dataset.tab==="users") renderUsersTable();
+  };
 });
 
-/* LOGIN com Enter */
-$("loginPass").addEventListener("keydown",(e)=>{
-  if(e.key==="Enter") login();
-});
-$("loginUser").addEventListener("keydown",(e)=>{
-  if(e.key==="Enter") login();
-});
+// Admin actions
+$("btnMachineClear").onclick = ()=>{
+  editingMachineId = null;
+  $("m_name").value=""; $("m_type").value=""; $("m_model").value=""; $("m_status").value="disponivel"; $("m_notes").value="";
+  toast("Limpo");
+};
+$("btnMachineSave").onclick = saveMachine;
+
+$("btnUserClear").onclick = ()=>{
+  editingUserId = null;
+  $("u_name").value=""; $("u_user").value=""; $("u_pass").value=""; $("u_role").value="operator"; $("u_active").value="true"; $("u_machine").value="";
+  toast("Limpo");
+};
+$("btnUserSave").onclick = saveUser;
+
+$("btnRefreshAdmin").onclick = renderDashboard;
+$("btnApplyFilters").onclick = renderRecordsTable;
+$("btnExportCSV").onclick = exportCSV;
+$("btnWipe").onclick = wipeAll;
 
 /* =======================
    BOOT
@@ -1611,6 +2038,7 @@ $("loginUser").addEventListener("keydown",(e)=>{
       if(u.role === "admin"){
         showAdmin();
         initAdmin();
+        showAdminTab("dash");
       }else{
         showOperator();
         initOperator();
@@ -1620,10 +2048,8 @@ $("loginUser").addEventListener("keydown",(e)=>{
       clearSession();
     }
   }
-
   showLogin();
 })();
 </script>
-
 </body>
 </html>
