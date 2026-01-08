@@ -1,0 +1,2154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Diário de Máquinas</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#2563eb;
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --warn:#d97706;
+      --shadow: 0 10px 25px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:var(--bg)}
+    header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:80}
+    .bar{max-width:1100px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#22c55e)}
+    .brand h1{margin:0;font-size:16px}
+    .brand small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12px;color:var(--muted);max-width:55vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    .pill b{color:var(--text)}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+    h2{margin:0 0 10px;font-size:15px}
+    .muted{color:var(--muted);font-size:12px;line-height:1.35}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 6px}
+    input,select,textarea{width:100%;padding:11px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--text);outline:none}
+    textarea{min-height:90px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:720px){.row{grid-template-columns:1fr}}
+    .btn{border:1px solid var(--line);background:#fff;color:var(--text);font-weight:800;padding:10px 12px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+    .btn:active{transform:translateY(1px)}
+    .rightBtns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+    @media(max-width:720px){.rightBtns{justify-content:stretch}.rightBtns .btn{width:100%}}
+    .divider{height:1px;background:var(--line);margin:12px 0}
+    .badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid var(--line);color:var(--muted);background:#fff}
+    .badge.ok{border-color:#bbf7d0;background:#f0fdf4;color:var(--ok)}
+    .badge.warn{border-color:#fed7aa;background:#fff7ed;color:var(--warn)}
+    .badge.bad{border-color:#fecaca;background:#fef2f2;color:var(--danger)}
+    .notice{border:1px solid var(--line);background:#fafafa;border-radius:12px;padding:10px;font-size:12px;color:var(--muted);line-height:1.35}
+    .preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .preview img{width:120px;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;background:#111827;color:#fff;padding:10px 12px;border-radius:999px;font-size:12px;font-weight:900;display:none;z-index:200;max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+    .tab{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);font-weight:900;font-size:12px;cursor:pointer}
+    .tab.active{border-color:var(--primary);color:var(--primary);background:#eff6ff}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+    th,td{border-bottom:1px solid var(--line);padding:10px;font-size:12px;vertical-align:top;text-align:left}
+    th{background:#fafafa;color:var(--muted)}
+    tr:last-child td{border-bottom:none}
+
+    /* Wizard (celular: vira "páginas") */
+    .wizardBar{
+      display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;
+      position:sticky;top:64px;z-index:70;
+    }
+    .steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .stepDot{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+      background:#fff;
+    }
+    .stepDot.active{border-color:var(--primary);color:var(--primary);background:#eff6ff}
+    .page{display:none}
+    .page.active{display:block}
+    @media(max-width:720px){
+      .page .card{min-height: calc(100vh - 170px);}
+    }
+
+    /* Modal */
+    .modalBack{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:300;align-items:center;justify-content:center;padding:14px}
+    .modal{max-width:900px;width:100%;background:#fff;border-radius:14px;border:1px solid var(--line);box-shadow:var(--shadow);padding:14px;max-height:85vh;overflow:auto}
+    .modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .x{cursor:pointer;border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px;font-weight:900}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Diário de Máquinas</h1>
+        <small>Admin completo • Operador em páginas (celular)</small>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <div class="pill">👤 <b id="pillName">—</b></div>
+      <button class="btn" id="btnLogout" style="display:none" type="button">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div class="card" id="viewLogin">
+    <h2>Login</h2>
+    <div class="row">
+      <div>
+        <label>Usuário</label>
+        <input id="loginUser" autocomplete="username" placeholder="ex.: op1 / admin"/>
+      </div>
+      <div>
+        <label>Senha</label>
+        <input id="loginPass" type="password" autocomplete="current-password" placeholder="sua senha"/>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Manter conectado</label>
+        <select id="keepLogged">
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
+      </div>
+      <div class="muted" style="align-self:end">
+        Dica: use como site (link) para funcionar perfeito em Android e iPhone.
+      </div>
+    </div>
+    <div class="rightBtns">
+      <button class="btn primary" id="btnLogin" type="button">Entrar</button>
+    </div>
+  </div>
+
+  <!-- OPERADOR (WIZARD) -->
+  <div id="viewOperator" style="display:none">
+
+    <div class="card">
+      <h2>Operador</h2>
+      <div class="row">
+        <div class="notice" id="opInfo">—</div>
+        <div class="notice" id="opTurnInfo">—</div>
+      </div>
+    </div>
+
+    <div class="wizardBar">
+      <div class="steps">
+        <div class="stepDot" id="dot1">1) Demanda</div>
+        <div class="stepDot" id="dot2">2) Início</div>
+        <div class="stepDot" id="dot3">3) Encerramento</div>
+      </div>
+      <div class="muted" id="wizHint">—</div>
+    </div>
+
+    <!-- PAGE 1: DEMANDA -->
+    <div class="page" id="page1">
+      <div class="card">
+        <h2>Demanda</h2>
+        <div class="row">
+          <div>
+            <label>Data</label>
+            <input id="opDate" type="date"/>
+          </div>
+          <div>
+            <label>Usar demanda anterior?</label>
+            <select id="usePrevDemand">
+              <option value="sim">Sim</option>
+              <option value="nao">Não (nova)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="prevDemandBox" class="notice" style="display:none; margin-top:10px">
+          <div><b>Demanda anterior:</b> <span id="prevDemandText">—</span></div>
+          <div class="rightBtns" style="justify-content:flex-start">
+            <button class="btn" type="button" id="btnUsePrev">Usar anterior</button>
+            <button class="btn" type="button" id="btnNewDemand">Nova demanda</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div>
+            <label>Tipo</label>
+            <select id="demandType">
+              <option value="">Selecione</option>
+              <option value="obra">Obra</option>
+              <option value="locacao">Locação</option>
+            </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <div class="muted" id="demandStatus">—</div>
+            <button class="btn danger" type="button" id="btnCloseRental" style="display:none; margin-top:8px">Encerrar locação</button>
+          </div>
+        </div>
+
+        <div id="demandObra" style="display:none">
+          <div class="row">
+            <div>
+              <label>Nome da obra</label>
+              <input id="obraName" placeholder="ex.: UFV Cláudio I"/>
+            </div>
+            <div>
+              <label>Localização</label>
+              <input id="obraLocation" placeholder="ex.: Cláudio/MG"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="demandLocacao" style="display:none">
+          <div class="row">
+            <div>
+              <label>Cliente</label>
+              <input id="locClient" placeholder="ex.: Cliente X"/>
+            </div>
+            <div>
+              <label>Localização</label>
+              <input id="locLocation" placeholder="ex.: Curvelo/MG"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="rightBtns">
+          <button class="btn" type="button" id="btnSaveDemand">Salvar demanda</button>
+          <button class="btn primary" type="button" id="btnNextToStart">Próximo</button>
+        </div>
+
+        <div class="muted" id="demandSummary">—</div>
+      </div>
+    </div>
+
+    <!-- PAGE 2: INÍCIO -->
+    <div class="page" id="page2">
+      <div class="card">
+        <h2>Início do dia</h2>
+
+        <div class="row">
+          <div>
+            <label>Horímetro inicial</label>
+            <input id="hm_start" type="number" step="0.1" placeholder="ex.: 5234.6"/>
+          </div>
+          <div>
+            <label>Foto do horímetro inicial</label>
+            <input id="hm_start_photo" type="file" accept="image/*" capture="environment"/>
+            <div class="preview" id="hm_start_preview"></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h2>Checklist</h2>
+        <div class="row">
+          <div><label>Óleo motor</label><select id="ck_oil"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Água / arrefecimento</label><select id="ck_cool"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Óleo hidráulico</label><select id="ck_hyd"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Vazamentos</label><select id="ck_leak"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Filtro de ar</label><select id="ck_air"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Esteira / pneus</label><select id="ck_track"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Painel / alertas</label><select id="ck_panel"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+          <div><label>Itens de segurança</label><select id="ck_safe"><option>OK</option><option>Atenção</option><option>Ruim</option></select></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div>
+            <label>Teve avaria?</label>
+            <select id="hasAvaria">
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+            </select>
+          </div>
+          <div>
+            <label>Categoria</label>
+            <select id="av_cat" disabled>
+              <option value="hidraulico">Hidráulico</option>
+              <option value="motor">Motor</option>
+              <option value="eletrica">Elétrica</option>
+              <option value="estrutura">Estrutura</option>
+              <option value="trem_forca">Trem de força</option>
+              <option value="implemento">Implemento</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="avariaBlock" style="display:none">
+          <div class="row">
+            <div>
+              <label>Gravidade</label>
+              <select id="av_sev">
+                <option value="leve">Leve</option>
+                <option value="media">Média</option>
+                <option value="grave">Grave</option>
+              </select>
+            </div>
+            <div>
+              <label>A máquina pode operar?</label>
+              <select id="av_can">
+                <option value="sim">Sim</option>
+                <option value="restricao">Com restrição</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Avaria já vinha de antes?</label>
+              <select id="av_prev">
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+            <div>
+              <label>Foto da avaria</label>
+              <input id="av_photo" type="file" accept="image/*" capture="environment"/>
+              <div class="preview" id="av_preview"></div>
+            </div>
+          </div>
+
+          <label>Descrição (obrigatória)</label>
+          <textarea id="av_desc" placeholder="Descreva o problema, sintomas, quando começou..."></textarea>
+        </div>
+
+        <div class="divider"></div>
+        <label>Observações do início do dia</label>
+        <textarea id="start_notes"></textarea>
+
+        <div class="rightBtns">
+          <button class="btn" type="button" id="btnBackToDemand">Voltar</button>
+          <button class="btn primary" type="button" id="btnStartShift">INICIAR TURNO</button>
+        </div>
+        <div class="muted">Ao iniciar, vai para a próxima página automaticamente.</div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: ENCERRAMENTO -->
+    <div class="page" id="page3">
+      <div class="card">
+        <h2>Encerramento do dia</h2>
+        <div class="notice" id="endHint">—</div>
+
+        <div class="row">
+          <div>
+            <label>Horímetro final</label>
+            <input id="hm_end" type="number" step="0.1" disabled/>
+          </div>
+          <div>
+            <label>Foto do horímetro final</label>
+            <input id="hm_end_photo" type="file" accept="image/*" capture="environment" disabled/>
+            <div class="preview" id="hm_end_preview"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Horas trabalhadas (auto)</label>
+            <input id="hrs_worked" disabled/>
+          </div>
+          <div>
+            <label>Horas paradas</label>
+            <input id="hrs_stopped" type="number" step="0.1" value="0" disabled/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Motivo da parada</label>
+            <select id="stop_reason" disabled>
+              <option value="">—</option>
+              <option value="manutencao">Manutenção</option>
+              <option value="chuva">Chuva</option>
+              <option value="aguardando">Aguardando serviço</option>
+              <option value="falta_material">Falta de material</option>
+              <option value="transporte">Transporte / mobilização</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label>Detalhe</label>
+            <input id="stop_detail" disabled/>
+          </div>
+        </div>
+
+        <label>Observações do dia</label>
+        <textarea id="day_notes" disabled></textarea>
+
+        <div class="divider"></div>
+
+        <h2>Abastecimento</h2>
+        <div class="row">
+          <div>
+            <label>Abasteceu hoje?</label>
+            <select id="fuel_yes" disabled>
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="fuel_type" disabled>
+              <option value="diesel">Diesel</option>
+              <option value="gasolina">Gasolina</option>
+              <option value="arla">ARLA</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="fuelBlock" style="display:none">
+          <div class="row">
+            <div>
+              <label>Litros</label>
+              <input id="fuel_liters" type="number" step="0.1" disabled/>
+            </div>
+            <div>
+              <label>Valor total (R$)</label>
+              <input id="fuel_total" type="number" step="0.01" disabled/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Preço por litro (auto)</label>
+              <input id="fuel_price" disabled/>
+            </div>
+            <div>
+              <label>Consumo aprox. (L/h) (auto)</label>
+              <input id="fuel_lph" disabled/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Quem abasteceu?</label>
+              <select id="fuel_who" disabled>
+                <option value="operador">Operador</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div>
+              <label>Foto nota/cupom</label>
+              <input id="fuel_photo" type="file" accept="image/*" capture="environment" disabled/>
+              <div class="preview" id="fuel_preview"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rightBtns">
+          <button class="btn" type="button" id="btnBackToStart">Voltar</button>
+          <button class="btn primary" type="button" id="btnFinishShift" disabled>ENCERRAR TURNO</button>
+        </div>
+        <div class="muted">Ao encerrar, finaliza e volta para a página 1 automaticamente.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ADMIN -->
+  <div id="viewAdmin" style="display:none">
+
+    <div class="card">
+      <h2>Admin</h2>
+      <div class="tabs">
+        <div class="tab active" data-tab="dash">Dashboard</div>
+        <div class="tab" data-tab="machines">Máquinas</div>
+        <div class="tab" data-tab="users">Operadores / Logins</div>
+        <div class="tab" data-tab="records">Registros</div>
+        <div class="tab" data-tab="export">Exportar</div>
+      </div>
+    </div>
+
+    <!-- DASH -->
+    <div class="card" id="ad_dash">
+      <h2>Status das máquinas (hoje)</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+          <tr>
+            <th>Máquina</th>
+            <th>Status</th>
+            <th>Operador</th>
+            <th>Horímetro</th>
+            <th>Demanda</th>
+          </tr>
+          </thead>
+          <tbody id="mach_status_body"></tbody>
+        </table>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Resumo (período)</h2>
+      <div class="row">
+        <div><label>De</label><input id="ad_from" type="date"/></div>
+        <div><label>Até</label><input id="ad_to" type="date"/></div>
+      </div>
+      <div class="rightBtns" style="justify-content:flex-start">
+        <button class="btn primary" type="button" id="btnRefreshAdmin">Atualizar</button>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row">
+        <div class="notice"><b>Horas trabalhadas:</b> <span id="kpi_hours">0.0</span></div>
+        <div class="notice"><b>Abastecimento (L):</b> <span id="kpi_liters">0.0</span></div>
+      </div>
+      <div class="row">
+        <div class="notice"><b>Avarias graves:</b> <span id="kpi_grave">0</span></div>
+        <div class="notice"><b>Máquinas sem diário hoje:</b> <span id="kpi_sem">0</span></div>
+      </div>
+    </div>
+
+    <!-- MACHINES -->
+    <div class="card" id="ad_machines" style="display:none">
+      <h2>Máquinas</h2>
+      <div class="row">
+        <div>
+          <label>Nome / Apelido</label>
+          <input id="m_name" placeholder="ex.: Trator esteira D7"/>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <input id="m_type" placeholder="ex.: trator / motoniveladora / escavadeira"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Marca/Modelo</label>
+          <input id="m_model" placeholder="ex.: New Holland 7D"/>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="m_status">
+            <option value="disponivel">Disponível</option>
+            <option value="operando">Operando</option>
+            <option value="parada">Parada</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="locada">Locada</option>
+          </select>
+        </div>
+      </div>
+      <label>Observações</label>
+      <textarea id="m_notes"></textarea>
+
+      <div class="rightBtns">
+        <button class="btn" id="btnMachineClear" type="button">Limpar</button>
+        <button class="btn primary" id="btnMachineSave" type="button">Salvar máquina</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Modelo</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="machines_body"></tbody>
+        </table>
+      </div>
+      <div class="muted">Dica: você pode cadastrar todas as máquinas aqui e depois vincular cada operador a uma máquina na aba “Operadores / Logins”.</div>
+    </div>
+
+    <!-- USERS -->
+    <div class="card" id="ad_users" style="display:none">
+      <h2>Operadores / Logins</h2>
+
+      <div class="row">
+        <div>
+          <label>Nome</label>
+          <input id="u_name" placeholder="ex.: Wesley"/>
+        </div>
+        <div>
+          <label>Usuário (login)</label>
+          <input id="u_user" placeholder="ex.: op_wesley (ou telefone)"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Senha</label>
+          <input id="u_pass" type="password" placeholder="defina a senha"/>
+        </div>
+        <div>
+          <label>Perfil</label>
+          <select id="u_role">
+            <option value="operator">Operador</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Ativo?</label>
+          <select id="u_active">
+            <option value="true">Ativo</option>
+            <option value="false">Inativo</option>
+          </select>
+        </div>
+        <div>
+          <label>Máquina vinculada (operador)</label>
+          <select id="u_machine"></select>
+        </div>
+      </div>
+
+      <div class="rightBtns">
+        <button class="btn" type="button" id="btnUserClear">Limpar</button>
+        <button class="btn primary" type="button" id="btnUserSave">Salvar usuário</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Usuário</th>
+            <th>Perfil</th>
+            <th>Ativo</th>
+            <th>Máquina</th>
+            <th>Ações</th>
+          </tr>
+          </thead>
+          <tbody id="users_body"></tbody>
+        </table>
+      </div>
+      <div class="muted">Você controla tudo aqui: cria operador, muda senha, vincula máquina, desativa.</div>
+    </div>
+
+    <!-- RECORDS -->
+    <div class="card" id="ad_records" style="display:none">
+      <h2>Registros</h2>
+      <div class="row">
+        <div><label>De</label><input id="rep_from" type="date"/></div>
+        <div><label>Até</label><input id="rep_to" type="date"/></div>
+      </div>
+      <div class="rightBtns" style="justify-content:flex-start">
+        <button class="btn primary" type="button" id="btnApplyFilters">Aplicar</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+          <tr>
+            <th>Data</th>
+            <th>Máquina</th>
+            <th>Operador</th>
+            <th>Demanda</th>
+            <th>Horas</th>
+            <th>Abast.</th>
+            <th>Avaria</th>
+            <th>Ações</th>
+          </tr>
+          </thead>
+          <tbody id="rep_body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="card" id="ad_export" style="display:none">
+      <h2>Exportar</h2>
+      <div class="rightBtns" style="justify-content:flex-start">
+        <button class="btn primary" type="button" id="btnExportCSV">Exportar CSV</button>
+        <button class="btn danger" type="button" id="btnWipe">Apagar tudo (local)</button>
+      </div>
+      <div class="muted">Exporta os registros do armazenamento local deste aparelho.</div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modalBack" id="modalBack">
+  <div class="modal">
+    <div class="modalHead">
+      <div>
+        <b id="modalTitle">Detalhes</b>
+        <div class="muted" id="modalSub"></div>
+      </div>
+      <button class="x" id="btnModalClose" type="button">Fechar</button>
+    </div>
+    <div class="divider"></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =======================
+   STORAGE
+   ======================= */
+const LS_KEY = "diario_maquinas_pro_v1";
+const LS_SESSION = "diario_session_pro_v1";
+
+function loadDB(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){
+    try { return JSON.parse(raw); } catch(e){}
+  }
+  // Seed inicial (você edita tudo no Admin depois)
+  return {
+    version: 1,
+    machines: [
+      { id: uid("m"), name:"Motoniveladora", type:"motoniveladora", model:"", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira 7d Laranja", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira 7d Amarelo", type:"trator", model:"New Holland 7D", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Trator esteira D7", type:"trator", model:"", status:"disponivel", notes:"" },
+      { id: uid("m"), name:"Escavadeira", type:"escavadeira", model:"", status:"disponivel", notes:"" },
+    ],
+    users: [
+      { id: uid("u"), name:"Administrador", username:"admin", password:"1234", role:"admin", active:true, machineId:null },
+      { id: uid("u"), name:"Operador 1", username:"op1", password:"1234", role:"operator", active:true, machineId:null },
+    ],
+    demandsByUser: {}, // username -> demand
+    rentals: [],
+    drafts: {},        // key username__date -> draft
+    records: []
+  };
+}
+let db = loadDB();
+
+function saveDB(){
+  localStorage.setItem(LS_KEY, JSON.stringify(db));
+}
+
+function ensureAdmin(){
+  db.users = Array.isArray(db.users) ? db.users : [];
+
+  const hasAdmin = db.users.some(u => u && u.username === "admin");
+  if(!hasAdmin){
+    db.users.unshift({
+      id: uid("u"),
+      name: "Administrador",
+      username: "admin",
+      password: "1234",
+      role: "admin",
+      active: true,
+      machineId: null
+    });
+  }
+}
+
+
+/* =======================
+   HELPERS
+   ======================= */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(()=>t.style.display="none", 2200);
+}
+function uid(prefix="id"){
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+function todayStr(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+function nowISO(){ return new Date().toISOString(); }
+
+function findUserByUsername(username){
+  return db.users.find(u => u.username === username) || null;
+}
+function findUserById(id){
+  return db.users.find(u => u.id === id) || null;
+}
+function findMachineById(id){
+  return db.machines.find(m => m.id === id) || null;
+}
+function machineName(id){
+  if(!id) return "—";
+  return findMachineById(id)?.name || "—";
+}
+function draftKey(username, date){ return `${username}__${date}`; }
+function getDraft(username, date){ return db.drafts[draftKey(username,date)] || null; }
+function setDraft(username, date, draft){ db.drafts[draftKey(username,date)] = draft; saveDB(); }
+function clearDraft(username, date){ delete db.drafts[draftKey(username,date)]; saveDB(); }
+
+async function fileToCompressedDataURL(file, maxW=1280, quality=0.75){
+  if(!file) return null;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.src = url;
+  await img.decode();
+  let w = img.width, h = img.height;
+  const ratio = Math.min(1, maxW / w);
+  w = Math.round(w * ratio);
+  h = Math.round(h * ratio);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+function showPreview(containerId, dataURL){
+  const box = $(containerId);
+  box.innerHTML = "";
+  if(!dataURL) return;
+  const im = document.createElement("img");
+  im.src = dataURL;
+  box.appendChild(im);
+}
+
+/* =======================
+   SESSION
+   ======================= */
+let session = { username:null, role:null };
+
+function saveSession(){
+  localStorage.setItem(LS_SESSION, JSON.stringify(session));
+}
+function loadSession(){
+  const raw = localStorage.getItem(LS_SESSION);
+  if(!raw) return null;
+  try { return JSON.parse(raw); } catch(e){ return null; }
+}
+function clearSession(){
+  localStorage.removeItem(LS_SESSION);
+}
+
+/* =======================
+   VIEWS
+   ======================= */
+function showLogin(){
+  $("viewLogin").style.display = "";
+  $("viewOperator").style.display = "none";
+  $("viewAdmin").style.display = "none";
+  $("btnLogout").style.display = "none";
+  $("pillName").textContent = "—";
+}
+function showOperator(){
+  $("viewLogin").style.display = "none";
+  $("viewOperator").style.display = "";
+  $("viewAdmin").style.display = "none";
+  $("btnLogout").style.display = "";
+}
+function showAdmin(){
+  $("viewLogin").style.display = "none";
+  $("viewOperator").style.display = "none";
+  $("viewAdmin").style.display = "";
+  $("btnLogout").style.display = "";
+}
+
+/* =======================
+   WIZARD (Operador)
+   ======================= */
+let currentStep = 1;
+function setStep(step){
+  currentStep = step;
+  $("page1").classList.toggle("active", step===1);
+  $("page2").classList.toggle("active", step===2);
+  $("page3").classList.toggle("active", step===3);
+
+  $("dot1").classList.toggle("active", step===1);
+  $("dot2").classList.toggle("active", step===2);
+  $("dot3").classList.toggle("active", step===3);
+
+  const hints = {
+    1: "Defina a demanda e avance",
+    2: "Preencha início e inicie o turno",
+    3: "Preencha no fim do dia e encerre"
+  };
+  $("wizHint").textContent = hints[step] || "—";
+
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* =======================
+   DEMANDA / LOCAÇÃO
+   ======================= */
+function activeRentalForUser(username){
+  return db.rentals.find(r => r.username===username && r.status==="ativa") || null;
+}
+function formatDemand(d){
+  if(!d) return "—";
+  if(d.type==="obra") return `OBRA: ${d.obraName || "?"} — ${d.obraLocation || "?"}`;
+  if(d.type==="locacao"){
+    const r = activeRentalForUser(session.username);
+    const st = r ? "ATIVA" : "—";
+    return `LOCAÇÃO (${st}): ${d.client || "?"} — ${d.location || "?"}`;
+  }
+  return "—";
+}
+function demandFromUI(){
+  const type = $("demandType").value;
+  if(!type) return null;
+  if(type==="obra"){
+    return { type:"obra", obraName:$("obraName").value.trim(), obraLocation:$("obraLocation").value.trim(), lastUsedISO:nowISO() };
+  }
+  if(type==="locacao"){
+    return { type:"locacao", client:$("locClient").value.trim(), location:$("locLocation").value.trim(), lastUsedISO:nowISO() };
+  }
+  return null;
+}
+function setDemandUI(d){
+  $("demandType").value = d?.type || "";
+  updateDemandTypeUI();
+  if(d?.type==="obra"){
+    $("obraName").value = d.obraName || "";
+    $("obraLocation").value = d.obraLocation || "";
+  }else if(d?.type==="locacao"){
+    $("locClient").value = d.client || "";
+    $("locLocation").value = d.location || "";
+  }
+  updateDemandSummary();
+}
+function updateDemandSummary(){
+  const saved = db.demandsByUser[session.username] || null;
+  const d = demandFromUI() || saved;
+  $("demandSummary").innerHTML = `<b>Demanda atual:</b> ${esc(formatDemand(d))}`;
+}
+function updateDemandTypeUI(){
+  const t = $("demandType").value;
+  $("demandObra").style.display = (t==="obra") ? "" : "none";
+  $("demandLocacao").style.display = (t==="locacao") ? "" : "none";
+
+  if(t==="locacao"){
+    const r = activeRentalForUser(session.username);
+    if(r){
+      $("btnCloseRental").style.display = "";
+      $("demandStatus").innerHTML = `Locação: <span class="badge ok">ATIVA</span> • Início: <b>${esc(r.startISO.slice(0,10))}</b>`;
+      $("locClient").value = r.client;
+      $("locLocation").value = r.location;
+    }else{
+      $("btnCloseRental").style.display = "none";
+      $("demandStatus").innerHTML = `Locação: <span class="badge">Sem ativa</span>`;
+    }
+  }else{
+    $("btnCloseRental").style.display = "none";
+    $("demandStatus").textContent = "—";
+  }
+  updateDemandSummary();
+}
+function saveDemand(){
+  const d = demandFromUI();
+  if(!d){ toast("Selecione tipo de demanda"); return; }
+  if(d.type==="obra"){
+    if(!d.obraName || !d.obraLocation){ toast("Preencha nome e localização da obra"); return; }
+  }
+  if(d.type==="locacao"){
+    if(!d.client || !d.location){ toast("Preencha cliente e localização"); return; }
+    const r = activeRentalForUser(session.username);
+    if(!r){
+      db.rentals.push({
+        id: uid("rent"),
+        username: session.username,
+        machineId: findUserByUsername(session.username)?.machineId || null,
+        client: d.client,
+        location: d.location,
+        startISO: nowISO(),
+        endISO: null,
+        status: "ativa"
+      });
+    }
+  }
+  db.demandsByUser[session.username] = d;
+  saveDB();
+  toast("Demanda salva");
+  updateDemandTypeUI();
+}
+function closeRental(){
+  const r = activeRentalForUser(session.username);
+  if(!r){ toast("Nenhuma locação ativa"); return; }
+  if(!confirm("Encerrar a locação agora?")) return;
+  r.status = "encerrada";
+  r.endISO = nowISO();
+  saveDB();
+  toast("Locação encerrada");
+
+  const d = db.demandsByUser[session.username];
+  if(d?.type==="locacao"){
+    delete db.demandsByUser[session.username];
+    saveDB();
+  }
+  $("demandType").value = "";
+  $("locClient").value = "";
+  $("locLocation").value = "";
+  updateDemandTypeUI();
+}
+
+/* =======================
+   CHECKLIST / AVARIA
+   ======================= */
+function setAvariaEnabled(enabled){
+  $("av_cat").disabled = !enabled;
+  $("avariaBlock").style.display = enabled ? "" : "none";
+  if(!enabled){
+    $("av_desc").value = "";
+    $("av_photo").value = "";
+    $("av_preview").innerHTML = "";
+  }
+}
+function checklistFromUI(){
+  return {
+    oil: $("ck_oil").value,
+    cool: $("ck_cool").value,
+    hyd: $("ck_hyd").value,
+    leak: $("ck_leak").value,
+    air: $("ck_air").value,
+    track: $("ck_track").value,
+    panel: $("ck_panel").value,
+    safe: $("ck_safe").value,
+  };
+}
+function avariaFromUI(photoDataURL){
+  if($("hasAvaria").value !== "sim") return null;
+  const desc = $("av_desc").value.trim();
+  return {
+    category: $("av_cat").value,
+    severity: $("av_sev").value,
+    canOperate: $("av_can").value,
+    previous: $("av_prev").value,
+    desc,
+    photo: photoDataURL || null
+  };
+}
+
+/* =======================
+   START/END FLOW
+   ======================= */
+function enableEndFields(enabled){
+  $("hm_end").disabled = !enabled;
+  $("hm_end_photo").disabled = !enabled;
+  $("hrs_stopped").disabled = !enabled;
+  $("stop_reason").disabled = !enabled;
+  $("stop_detail").disabled = !enabled;
+  $("day_notes").disabled = !enabled;
+  $("fuel_yes").disabled = !enabled;
+  $("fuel_type").disabled = !enabled;
+  $("fuel_liters").disabled = !enabled;
+  $("fuel_total").disabled = !enabled;
+  $("fuel_who").disabled = !enabled;
+  $("fuel_photo").disabled = !enabled;
+  $("btnFinishShift").disabled = !enabled;
+
+  if(!enabled){
+    $("fuelBlock").style.display = "none";
+  }
+}
+function setFuelBlockVisible(){
+  $("fuelBlock").style.display = ($("fuel_yes").value==="sim") ? "" : "none";
+}
+function calcHours(){
+  const date = $("opDate").value;
+  const d = getDraft(session.username, date);
+  const s = Number(d?.hmStart ?? NaN);
+  const e = Number($("hm_end").value);
+  if(Number.isFinite(s) && Number.isFinite(e) && e >= s){
+    $("hrs_worked").value = (e - s).toFixed(1);
+  }else{
+    $("hrs_worked").value = "";
+  }
+}
+function calcFuel(){
+  if($("fuel_yes").value !== "sim"){
+    $("fuel_price").value = "";
+    $("fuel_lph").value = "";
+    return;
+  }
+  const liters = Number($("fuel_liters").value);
+  const total = Number($("fuel_total").value);
+  if(Number.isFinite(liters) && liters>0 && Number.isFinite(total) && total>0){
+    $("fuel_price").value = (total/liters).toFixed(3);
+  }else{
+    $("fuel_price").value = "";
+  }
+  const hw = Number($("hrs_worked").value);
+  if(Number.isFinite(liters) && liters>0 && Number.isFinite(hw) && hw>0){
+    $("fuel_lph").value = (liters/hw).toFixed(2);
+  }else{
+    $("fuel_lph").value = "";
+  }
+}
+
+function lockStartFields(lock){
+  $("hm_start").disabled = lock;
+  $("hm_start_photo").disabled = lock;
+  $("btnStartShift").disabled = lock;
+
+  $("ck_oil").disabled = lock;
+  $("ck_cool").disabled = lock;
+  $("ck_hyd").disabled = lock;
+  $("ck_leak").disabled = lock;
+  $("ck_air").disabled = lock;
+  $("ck_track").disabled = lock;
+  $("ck_panel").disabled = lock;
+  $("ck_safe").disabled = lock;
+
+  $("hasAvaria").disabled = lock;
+  $("av_sev").disabled = lock;
+  $("av_can").disabled = lock;
+  $("av_prev").disabled = lock;
+  $("av_photo").disabled = lock;
+  $("av_desc").disabled = lock;
+
+  // av_cat depende do "teve avaria"
+  $("av_cat").disabled = lock || ($("hasAvaria").value !== "sim");
+
+  $("start_notes").disabled = lock;
+}
+
+function resetStartFields(){
+  $("hm_start").value = "";
+  $("hm_start_photo").value = "";
+  $("hm_start_preview").innerHTML = "";
+
+  $("ck_oil").value="OK"; $("ck_cool").value="OK"; $("ck_hyd").value="OK"; $("ck_leak").value="OK";
+  $("ck_air").value="OK"; $("ck_track").value="OK"; $("ck_panel").value="OK"; $("ck_safe").value="OK";
+
+  $("hasAvaria").value="nao";
+  setAvariaEnabled(false);
+
+  $("start_notes").value="";
+}
+function resetEndFields(){
+  $("hm_end").value="";
+  $("hm_end_photo").value="";
+  $("hm_end_preview").innerHTML="";
+  $("hrs_worked").value="";
+  $("hrs_stopped").value="0";
+  $("stop_reason").value="";
+  $("stop_detail").value="";
+  $("day_notes").value="";
+  $("fuel_yes").value="nao";
+  $("fuel_type").value="diesel";
+  $("fuel_liters").value="";
+  $("fuel_total").value="";
+  $("fuel_price").value="";
+  $("fuel_lph").value="";
+  $("fuel_who").value="operador";
+  $("fuel_photo").value="";
+  $("fuel_preview").innerHTML="";
+  $("fuelBlock").style.display="none";
+}
+
+function updateTurnInfo(){
+  const date = $("opDate").value;
+  const d = getDraft(session.username, date);
+  if(d){
+    $("opTurnInfo").innerHTML =
+      `<b>Turno:</b> <span class="badge ok">RODANDO</span><br>` +
+      `<b>Início:</b> ${esc(d.startedAtISO.slice(0,16).replace("T"," "))}<br>` +
+      `<b>Horímetro inicial:</b> ${esc(d.hmStart)}`;
+    $("endHint").innerHTML = `Turno iniciado. Preencha no fim do dia e clique <b>ENCERRAR TURNO</b>.`;
+  }else{
+    $("opTurnInfo").innerHTML =
+      `<b>Turno:</b> <span class="badge">NÃO INICIADO</span><br>` +
+      `Inicie o turno na página 2.`;
+    $("endHint").innerHTML = `Inicie o turno primeiro para liberar esta página.`;
+  }
+}
+
+async function startShift(){
+  const date = $("opDate").value;
+  if(!date){ toast("Selecione a data"); setStep(1); return; }
+
+  const user = findUserByUsername(session.username);
+  if(!user || !user.active){ toast("Usuário inativo"); logout(); return; }
+  if(!user.machineId){ toast("Admin precisa vincular uma máquina ao seu login"); setStep(1); return; }
+
+  // demanda obrigatória
+  const saved = db.demandsByUser[session.username] || null;
+  const d = demandFromUI() || saved;
+  if(!d){ toast("Defina e salve a demanda"); setStep(1); return; }
+  if(d.type==="obra" && (!d.obraName || !d.obraLocation)){ toast("Demanda de obra incompleta"); setStep(1); return; }
+  if(d.type==="locacao" && (!d.client || !d.location)){ toast("Demanda de locação incompleta"); setStep(1); return; }
+
+  // cria locação ativa se necessário
+  if(d.type==="locacao"){
+    const r = activeRentalForUser(session.username);
+    if(!r){
+      db.rentals.push({
+        id: uid("rent"),
+        username: session.username,
+        machineId: user.machineId,
+        client: d.client,
+        location: d.location,
+        startISO: nowISO(),
+        endISO: null,
+        status: "ativa"
+      });
+      saveDB();
+    }
+  }
+
+  const hmStart = Number($("hm_start").value);
+  if(!Number.isFinite(hmStart)){ toast("Preencha horímetro inicial"); return; }
+
+  let hmStartPhoto = null;
+  const f = $("hm_start_photo").files?.[0] || null;
+  if(f) hmStartPhoto = await fileToCompressedDataURL(f);
+
+  let avPhoto = null;
+  if($("hasAvaria").value === "sim"){
+    const desc = $("av_desc").value.trim();
+    if(!desc){ toast("Descreva a avaria"); return; }
+    const af = $("av_photo").files?.[0] || null;
+    if(af) avPhoto = await fileToCompressedDataURL(af);
+  }
+
+  const draft = {
+    id: uid("draft"),
+    date,
+    startedAtISO: nowISO(),
+    username: session.username,
+    operatorName: user.name,
+    machineId: user.machineId,
+    machineName: machineName(user.machineId),
+    demand: d,
+    hmStart,
+    hmStartPhoto,
+    checklist: checklistFromUI(),
+    avaria: avariaFromUI(avPhoto),
+    startNotes: $("start_notes").value.trim()
+  };
+
+  setDraft(session.username, date, draft);
+
+  lockStartFields(true);
+  enableEndFields(true);
+  updateTurnInfo();
+  toast("Bom trabalho! ✅");
+  setStep(3); // vai pra próxima página automaticamente
+}
+
+async function finishShift(){
+  const date = $("opDate").value;
+  const draft = getDraft(session.username, date);
+  if(!draft){ toast("Inicie o turno primeiro"); setStep(2); return; }
+
+  const hmEnd = Number($("hm_end").value);
+  if(!Number.isFinite(hmEnd)){ toast("Preencha horímetro final"); return; }
+  if(hmEnd < draft.hmStart){ toast("Horímetro final não pode ser menor que o inicial"); return; }
+
+  let hmEndPhoto = null;
+  const f = $("hm_end_photo").files?.[0] || null;
+  if(f) hmEndPhoto = await fileToCompressedDataURL(f);
+
+  calcHours();
+  const hoursWorked = Number($("hrs_worked").value || 0);
+
+  setFuelBlockVisible();
+  calcFuel();
+  let fuelPhoto = null;
+  if($("fuel_yes").value === "sim"){
+    const liters = Number($("fuel_liters").value);
+    const total = Number($("fuel_total").value);
+    if(!Number.isFinite(liters) || liters<=0){ toast("Informe litros"); return; }
+    if(!Number.isFinite(total) || total<=0){ toast("Informe valor total"); return; }
+    const fu = $("fuel_photo").files?.[0] || null;
+    if(fu) fuelPhoto = await fileToCompressedDataURL(fu);
+  }
+
+  const record = {
+    id: uid("rec"),
+    date,
+    createdAtISO: nowISO(),
+    username: draft.username,
+    operatorName: draft.operatorName,
+    machineId: draft.machineId,
+    machineName: draft.machineName,
+    demand: draft.demand,
+
+    hmStart: draft.hmStart,
+    hmStartPhoto: draft.hmStartPhoto,
+    checklist: draft.checklist,
+    avaria: draft.avaria,
+    startNotes: draft.startNotes,
+
+    hmEnd,
+    hmEndPhoto,
+    hoursWorked,
+    hoursStopped: Number($("hrs_stopped").value || 0),
+    stopReason: $("stop_reason").value,
+    stopDetail: $("stop_detail").value.trim(),
+    dayNotes: $("day_notes").value.trim(),
+
+    fuel: ($("fuel_yes").value === "sim") ? {
+      yes:true,
+      type: $("fuel_type").value,
+      who: $("fuel_who").value,
+      liters: Number($("fuel_liters").value),
+      total: Number($("fuel_total").value),
+      pricePerLiter: Number($("fuel_price").value),
+      lph: Number($("fuel_lph").value),
+      photo: fuelPhoto
+    } : { yes:false }
+  };
+
+  db.records.push(record);
+  saveDB();
+  clearDraft(session.username, date);
+
+  toast("Turno encerrado ✅");
+
+  // reset e volta pra página 1
+  lockStartFields(false);
+  enableEndFields(false);
+  resetStartFields();
+  resetEndFields();
+  updateTurnInfo();
+  updateDemandSummary();
+  setStep(1);
+}
+
+/* =======================
+   LOAD DRAFT (se já iniciou)
+   ======================= */
+function loadDraftToUIIfExists(){
+  const date = $("opDate").value;
+  const draft = getDraft(session.username, date);
+
+  if(!draft){
+    lockStartFields(false);
+    enableEndFields(false);
+    resetStartFields();
+    resetEndFields();
+    updateTurnInfo();
+    return;
+  }
+
+  // preencher início
+  $("hm_start").value = draft.hmStart;
+  showPreview("hm_start_preview", draft.hmStartPhoto);
+
+  $("ck_oil").value = draft.checklist.oil;
+  $("ck_cool").value = draft.checklist.cool;
+  $("ck_hyd").value = draft.checklist.hyd;
+  $("ck_leak").value = draft.checklist.leak;
+  $("ck_air").value = draft.checklist.air;
+  $("ck_track").value = draft.checklist.track;
+  $("ck_panel").value = draft.checklist.panel;
+  $("ck_safe").value = draft.checklist.safe;
+
+  if(draft.avaria){
+    $("hasAvaria").value="sim";
+    setAvariaEnabled(true);
+    $("av_cat").value = draft.avaria.category;
+    $("av_sev").value = draft.avaria.severity;
+    $("av_can").value = draft.avaria.canOperate;
+    $("av_prev").value = draft.avaria.previous;
+    $("av_desc").value = draft.avaria.desc;
+    showPreview("av_preview", draft.avaria.photo);
+  }else{
+    $("hasAvaria").value="nao";
+    setAvariaEnabled(false);
+  }
+
+  $("start_notes").value = draft.startNotes || "";
+
+  lockStartFields(true);
+  enableEndFields(true);
+  updateTurnInfo();
+}
+
+/* =======================
+   OPERATOR INIT
+   ======================= */
+function initOperator(){
+  const user = findUserByUsername(session.username);
+  $("opInfo").innerHTML =
+    `<b>Operador:</b> ${esc(user.name)}<br><b>Máquina:</b> ${esc(machineName(user.machineId))}`;
+
+  $("opDate").value = todayStr();
+
+  // demanda anterior
+  const prev = db.demandsByUser[session.username] || null;
+  if(prev){
+    $("prevDemandBox").style.display = "";
+    $("prevDemandText").textContent = formatDemand(prev);
+  }else{
+    $("prevDemandBox").style.display = "none";
+  }
+
+  if($("usePrevDemand").value==="sim" && prev) setDemandUI(prev);
+  else setDemandUI(null);
+
+  updateDemandTypeUI();
+  updateDemandSummary();
+
+  loadDraftToUIIfExists();
+  updateTurnInfo();
+
+  // se já tem draft do dia, já vai pro encerramento
+  const d = getDraft(session.username, $("opDate").value);
+  setStep(d ? 3 : 1);
+}
+
+/* =======================
+   ADMIN: TABS
+   ======================= */
+function setupAdminTabs(){
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  function showTab(tab){
+    tabs.forEach(x=>x.classList.toggle("active", x.dataset.tab===tab));
+    $("ad_dash").style.display = (tab==="dash") ? "" : "none";
+    $("ad_machines").style.display = (tab==="machines") ? "" : "none";
+    $("ad_users").style.display = (tab==="users") ? "" : "none";
+    $("ad_records").style.display = (tab==="records") ? "" : "none";
+    $("ad_export").style.display = (tab==="export") ? "" : "none";
+  }
+  tabs.forEach(t => t.onclick = ()=> {
+    showTab(t.dataset.tab);
+    if(t.dataset.tab==="machines"){ renderMachinesTable(); fillMachineSelectForUsers(); }
+    if(t.dataset.tab==="users"){ renderUsersTable(); fillMachineSelectForUsers(); }
+    if(t.dataset.tab==="records"){ renderRecordsTable(); }
+    if(t.dataset.tab==="dash"){ refreshAdmin(); }
+  });
+  showTab("dash");
+}
+
+/* =======================
+   ADMIN: DASH
+   ======================= */
+function machineStatusToday(){
+  const today = todayStr();
+  const draftByMachine = new Map();
+  Object.values(db.drafts).forEach(d=>{
+    if(d.date===today) draftByMachine.set(d.machineId, d);
+  });
+
+  const recToday = db.records.filter(r=>r.date===today);
+  const recordByMachine = new Map();
+  recToday.forEach(r=>recordByMachine.set(r.machineId, r));
+
+  return db.machines.map(m=>{
+    const d = draftByMachine.get(m.id) || null;
+    const r = recordByMachine.get(m.id) || null;
+    const stopByAvaria = (r?.avaria && r.avaria.canOperate==="nao") || (d?.avaria && d.avaria.canOperate==="nao");
+
+    let status = { label:"Sem diário", badge:"badge" };
+    let operador = "—";
+    let hor = "—";
+    let dem = "—";
+
+    if(d){
+      status = { label: stopByAvaria ? "Parada" : "Rodando", badge: stopByAvaria ? "badge bad" : "badge ok" };
+      operador = d.operatorName;
+      hor = `Ini: ${d.hmStart}`;
+      dem = formatDemand(d.demand);
+    } else if(r){
+      status = { label: stopByAvaria ? "Parada" : "Encerrada hoje", badge: stopByAvaria ? "badge bad" : "badge warn" };
+      operador = r.operatorName;
+      hor = `Ini: ${r.hmStart} • Fim: ${r.hmEnd}`;
+      dem = formatDemand(r.demand);
+    }
+    return { machine:m.name, status, operador, hor, dem };
+  });
+}
+function renderMachineStatusTable(){
+  const rows = machineStatusToday();
+  $("mach_status_body").innerHTML = rows.map(x=>`
+    <tr>
+      <td><b>${esc(x.machine)}</b></td>
+      <td><span class="${esc(x.status.badge)}">${esc(x.status.label)}</span></td>
+      <td>${esc(x.operador)}</td>
+      <td>${esc(x.hor)}</td>
+      <td>${esc(x.dem)}</td>
+    </tr>
+  `).join("");
+}
+function refreshAdmin(){
+  renderMachineStatusTable();
+
+  const from = $("ad_from").value || "0000-01-01";
+  const to = $("ad_to").value || "9999-12-31";
+  const rows = db.records.filter(r => r.date>=from && r.date<=to);
+
+  let hours=0, liters=0, grave=0;
+  rows.forEach(r=>{
+    hours += Number(r.hoursWorked||0);
+    if(r.fuel?.yes) liters += Number(r.fuel.liters||0);
+    if(r.avaria && r.avaria.severity==="grave") grave++;
+  });
+
+  $("kpi_hours").textContent = hours.toFixed(1);
+  $("kpi_liters").textContent = liters.toFixed(1);
+  $("kpi_grave").textContent = String(grave);
+
+  const today = todayStr();
+  const hasToday = new Set(db.records.filter(r=>r.date===today).map(r=>r.machineId));
+  const hasDraftToday = new Set(Object.values(db.drafts).filter(d=>d.date===today).map(d=>d.machineId));
+  const sem = db.machines.filter(m=> !hasToday.has(m.id) && !hasDraftToday.has(m.id)).length;
+  $("kpi_sem").textContent = String(sem);
+}
+
+/* =======================
+   ADMIN: MACHINES CRUD
+   ======================= */
+let editingMachineId = null;
+
+function machineStatusLabel(s){
+  const map = {
+    disponivel: "Disponível",
+    operando: "Operando",
+    parada: "Parada",
+    manutencao: "Manutenção",
+    locada: "Locada"
+  };
+  return map[s] || s || "—";
+}
+function renderMachinesTable(){
+  $("machines_body").innerHTML = db.machines.map(m=>`
+    <tr>
+      <td><b>${esc(m.name)}</b></td>
+      <td>${esc(m.type||"—")}</td>
+      <td>${esc(m.model||"—")}</td>
+      <td><span class="badge">${esc(machineStatusLabel(m.status))}</span></td>
+      <td>
+        <button class="btn" type="button" onclick="editMachine('${m.id}')">Editar</button>
+        <button class="btn danger" type="button" onclick="deleteMachine('${m.id}')">Excluir</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" class="muted">Sem máquinas cadastradas.</td></tr>`;
+}
+function clearMachineForm(){
+  editingMachineId = null;
+  $("m_name").value="";
+  $("m_type").value="";
+  $("m_model").value="";
+  $("m_status").value="disponivel";
+  $("m_notes").value="";
+}
+function editMachine(id){
+  const m = findMachineById(id);
+  if(!m) return;
+  editingMachineId = id;
+  $("m_name").value = m.name || "";
+  $("m_type").value = m.type || "";
+  $("m_model").value = m.model || "";
+  $("m_status").value = m.status || "disponivel";
+  $("m_notes").value = m.notes || "";
+  toast("Editando máquina");
+}
+function deleteMachine(id){
+  if(!confirm("Excluir esta máquina?")) return;
+  // remove vínculo de usuários
+  db.users.forEach(u=>{
+    if(u.machineId===id) u.machineId=null;
+  });
+  // remove registros/drafts não serão apagados (histórico), mas pode manter o nome por machineId antigo
+  db.machines = db.machines.filter(m=>m.id!==id);
+  saveDB();
+  renderMachinesTable();
+  fillMachineSelectForUsers();
+  toast("Máquina excluída");
+}
+function saveMachine(){
+  const name = $("m_name").value.trim();
+  if(!name){ toast("Informe o nome da máquina"); return; }
+
+  const obj = {
+    name,
+    type: $("m_type").value.trim(),
+    model: $("m_model").value.trim(),
+    status: $("m_status").value,
+    notes: $("m_notes").value.trim()
+  };
+
+  if(editingMachineId){
+    const m = findMachineById(editingMachineId);
+    if(!m){ toast("Máquina não encontrada"); return; }
+    Object.assign(m, obj);
+  }else{
+    db.machines.push({ id: uid("m"), ...obj });
+  }
+  saveDB();
+  clearMachineForm();
+  renderMachinesTable();
+  fillMachineSelectForUsers();
+  toast("Máquina salva");
+}
+
+/* =======================
+   ADMIN: USERS CRUD (logins)
+   ======================= */
+let editingUserId = null;
+
+function fillMachineSelectForUsers(){
+  const sel = $("u_machine");
+  sel.innerHTML = `<option value="">— (nenhuma)</option>` + db.machines.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+}
+function renderUsersTable(){
+  $("users_body").innerHTML = db.users.map(u=>{
+    const active = u.active ? "Sim" : "Não";
+    const role = u.role === "admin" ? "Admin" : "Operador";
+    return `
+      <tr>
+        <td><b>${esc(u.name)}</b></td>
+        <td>${esc(u.username)}</td>
+        <td><span class="badge">${esc(role)}</span></td>
+        <td>${esc(active)}</td>
+        <td>${esc(machineName(u.machineId))}</td>
+        <td>
+          <button class="btn" type="button" onclick="editUser('${u.id}')">Editar</button>
+          <button class="btn" type="button" onclick="resetUserPass('${u.id}')">Senha</button>
+          <button class="btn danger" type="button" onclick="deleteUser('${u.id}')">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" class="muted">Sem usuários cadastrados.</td></tr>`;
+}
+function clearUserForm(){
+  editingUserId = null;
+  $("u_name").value="";
+  $("u_user").value="";
+  $("u_pass").value="";
+  $("u_role").value="operator";
+  $("u_active").value="true";
+  $("u_machine").value="";
+}
+function editUser(id){
+  const u = findUserById(id);
+  if(!u) return;
+  editingUserId = id;
+  $("u_name").value = u.name || "";
+  $("u_user").value = u.username || "";
+  $("u_pass").value = ""; // não exibe senha
+  $("u_role").value = u.role || "operator";
+  $("u_active").value = String(!!u.active);
+  $("u_machine").value = u.machineId || "";
+  toast("Editando usuário");
+}
+function deleteUser(id){
+  const u = findUserById(id);
+  if(!u) return;
+  if(u.username === "admin"){
+    toast("Não é permitido excluir o admin principal");
+    return;
+  }
+  if(!confirm("Excluir este usuário?")) return;
+  db.users = db.users.filter(x=>x.id!==id);
+  saveDB();
+  renderUsersTable();
+  toast("Usuário excluído");
+}
+function resetUserPass(id){
+  const u = findUserById(id);
+  if(!u) return;
+  const newPass = prompt("Digite a nova senha:", "");
+  if(newPass === null) return;
+  if(!newPass.trim()){ toast("Senha inválida"); return; }
+  u.password = newPass.trim();
+  saveDB();
+  toast("Senha atualizada");
+}
+function saveUser(){
+  const name = $("u_name").value.trim();
+  const username = $("u_user").value.trim();
+  const pass = $("u_pass").value;
+  const role = $("u_role").value;
+  const active = ($("u_active").value === "true");
+  const machineId = $("u_machine").value || null;
+
+  if(!name){ toast("Informe o nome"); return; }
+  if(!username){ toast("Informe o usuário (login)"); return; }
+  if(!editingUserId && !pass.trim()){ toast("Defina uma senha"); return; }
+
+  // username único
+  const exists = db.users.find(u => u.username===username && u.id!==editingUserId);
+  if(exists){ toast("Usuário (login) já existe"); return; }
+
+  if(editingUserId){
+    const u = findUserById(editingUserId);
+    if(!u){ toast("Usuário não encontrado"); return; }
+    u.name = name;
+    u.username = username;
+    u.role = role;
+    u.active = active;
+    u.machineId = (role==="operator") ? machineId : null;
+    if(pass.trim()) u.password = pass.trim(); // só troca se preencher
+  }else{
+    db.users.push({
+      id: uid("u"),
+      name,
+      username,
+      password: pass.trim(),
+      role,
+      active,
+      machineId: (role==="operator") ? machineId : null
+    });
+  }
+
+  saveDB();
+  clearUserForm();
+  renderUsersTable();
+  toast("Usuário salvo");
+}
+
+/* =======================
+   ADMIN: RECORDS
+   ======================= */
+function getMachineNameFromRecord(r){
+  // se a máquina foi excluída depois, tenta manter o nome gravado
+  return r.machineName || machineName(r.machineId) || "—";
+}
+function renderRecordsTable(){
+  const from = $("rep_from").value || "0000-01-01";
+  const to = $("rep_to").value || "9999-12-31";
+  const rows = db.records.filter(r=>r.date>=from && r.date<=to).slice().reverse();
+
+  $("rep_body").innerHTML = rows.map(r=>{
+    const hrs = Number(r.hoursWorked||0).toFixed(1);
+    const fuel = r.fuel?.yes ? `${r.fuel.liters} L` : "—";
+    const av = r.avaria ? r.avaria.severity : "—";
+    return `
+      <tr>
+        <td><b>${esc(r.date)}</b></td>
+        <td>${esc(getMachineNameFromRecord(r))}</td>
+        <td>${esc(r.operatorName)}</td>
+        <td>${esc(formatDemand(r.demand))}</td>
+        <td>${esc(hrs)}</td>
+        <td>${esc(fuel)}</td>
+        <td>${esc(av)}</td>
+        <td>
+          <button class="btn" type="button" onclick="viewRecord('${r.id}')">Ver</button>
+          <button class="btn danger" type="button" onclick="deleteRecord('${r.id}')">Apagar</button>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="8" class="muted">Sem registros no período.</td></tr>`;
+}
+function deleteRecord(id){
+  if(!confirm("Apagar este registro?")) return;
+  db.records = db.records.filter(r=>r.id!==id);
+  saveDB();
+  renderRecordsTable();
+  refreshAdmin();
+  toast("Registro apagado");
+}
+
+/* =======================
+   MODAL (detalhes)
+   ======================= */
+function openModal(title, sub, html){
+  $("modalTitle").textContent = title;
+  $("modalSub").textContent = sub || "";
+  $("modalBody").innerHTML = html || "";
+  $("modalBack").style.display = "flex";
+}
+function closeModal(){
+  $("modalBack").style.display = "none";
+}
+function viewRecord(id){
+  const r = db.records.find(x=>x.id===id);
+  if(!r) return;
+
+  const av = r.avaria;
+  const fu = r.fuel;
+
+  const photos = [];
+  if(r.hmStartPhoto) photos.push({label:"Horímetro inicial", src:r.hmStartPhoto});
+  if(r.hmEndPhoto) photos.push({label:"Horímetro final", src:r.hmEndPhoto});
+  if(av?.photo) photos.push({label:"Avaria", src:av.photo});
+  if(fu?.photo) photos.push({label:"Nota/abastecimento", src:fu.photo});
+
+  const photoHTML = photos.length ? `
+    <div class="divider"></div>
+    <h2>Fotos</h2>
+    <div class="preview">
+      ${photos.map(p=>`<div style="width:140px">
+        <div class="muted" style="margin-bottom:6px"><b>${esc(p.label)}</b></div>
+        <img src="${p.src}" style="width:140px;height:100px;object-fit:cover;border-radius:12px;border:1px solid var(--line)"/>
+      </div>`).join("")}
+    </div>
+  ` : "";
+
+  const html = `
+    <div class="notice">
+      <b>Data:</b> ${esc(r.date)}<br>
+      <b>Máquina:</b> ${esc(getMachineNameFromRecord(r))}<br>
+      <b>Operador:</b> ${esc(r.operatorName)}<br>
+      <b>Demanda:</b> ${esc(formatDemand(r.demand))}
+    </div>
+
+    <div class="divider"></div>
+    <h2>Horímetro / Horas</h2>
+    <div class="notice">
+      <b>Inicial:</b> ${esc(r.hmStart)}<br>
+      <b>Final:</b> ${esc(r.hmEnd)}<br>
+      <b>Horas trabalhadas:</b> ${esc(r.hoursWorked)}<br>
+      <b>Paradas:</b> ${esc(r.hoursStopped)} ${r.stopReason ? `• ${esc(r.stopReason)} ${esc(r.stopDetail||"")}`:""}
+    </div>
+
+    ${r.dayNotes ? `<div class="divider"></div><h2>Observações do dia</h2><div class="notice">${esc(r.dayNotes).replaceAll("\n","<br>")}</div>`:""}
+
+    <div class="divider"></div>
+    <h2>Avaria</h2>
+    <div class="notice">
+      ${av ? `
+        <b>Categoria:</b> ${esc(av.category)}<br>
+        <b>Gravidade:</b> ${esc(av.severity)}<br>
+        <b>Pode operar:</b> ${esc(av.canOperate)}<br>
+        <b>Já vinha de antes:</b> ${esc(av.previous)}<br>
+        <b>Descrição:</b> ${esc(av.desc).replaceAll("\n","<br>")}
+      ` : "Nenhuma"}
+    </div>
+
+    <div class="divider"></div>
+    <h2>Abastecimento</h2>
+    <div class="notice">
+      ${fu?.yes ? `
+        <b>Tipo:</b> ${esc(fu.type)}<br>
+        <b>Litros:</b> ${esc(fu.liters)}<br>
+        <b>Total:</b> R$ ${esc(Number(fu.total).toFixed(2))}<br>
+        <b>R$/L:</b> ${esc(fu.pricePerLiter)}<br>
+        <b>L/h:</b> ${esc(fu.lph)}<br>
+        <b>Quem:</b> ${esc(fu.who)}
+      ` : "Não abasteceu"}
+    </div>
+
+    ${photoHTML}
+  `;
+
+  openModal("Registro", `${r.machineName} • ${r.operatorName}`, html);
+}
+
+/* =======================
+   EXPORT
+   ======================= */
+function csvCell(v){
+  const s = (v===null || v===undefined) ? "" : String(v);
+  if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function downloadText(text, filename, mime){
+  const blob = new Blob([text], {type: mime || "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+function exportCSV(){
+  const header = [
+    "id","date","machine","operator","username",
+    "demand_type","obra_name","obra_location","client","loc_location",
+    "hm_start","hm_end","hours_worked","hours_stopped","stop_reason","stop_detail","day_notes",
+    "fuel_yes","fuel_type","fuel_liters","fuel_total","fuel_price_per_liter","fuel_lph","fuel_who",
+    "avaria_yes","av_cat","av_sev","av_can_operate","av_previous","av_desc"
+  ];
+  const lines = [header.join(",")];
+
+  db.records.slice().sort((a,b)=>a.date>b.date?1:-1).forEach(r=>{
+    const dem = r.demand || {};
+    const fu = r.fuel || {};
+    const av = r.avaria || {};
+    lines.push([
+      r.id, r.date, getMachineNameFromRecord(r), r.operatorName, r.username,
+      dem.type||"", dem.obraName||"", dem.obraLocation||"", dem.client||"", dem.location||"",
+      r.hmStart??"", r.hmEnd??"", r.hoursWorked??"", r.hoursStopped??"", r.stopReason||"", r.stopDetail||"", (r.dayNotes||"").replace(/\n/g," "),
+      fu.yes?"sim":"nao", fu.type||"", fu.liters??"", fu.total??"", fu.pricePerLiter??"", fu.lph??"", fu.who||"",
+      r.avaria?"sim":"nao", av.category||"", av.severity||"", av.canOperate||"", av.previous||"", (av.desc||"").replace(/\n/g," ")
+    ].map(csvCell).join(","));
+  });
+
+  downloadText(lines.join("\n"), `registros_${todayStr()}.csv`, "text/csv;charset=utf-8");
+  toast("CSV exportado");
+}
+function wipeAll(){
+  if(!confirm("Apagar tudo do armazenamento local?")) return;
+
+  localStorage.removeItem(LS_KEY);
+  db = loadDB();
+  saveDB();
+
+  toast("Apagado");
+
+  if(session.role === "admin"){
+    initAdmin();
+  }else{
+    initOperator();
+  }
+}
+
+/* =======================
+   AUTH (LOGIN / LOGOUT)
+   ======================= */
+function logout(){
+  session = { username:null, role:null };
+  clearSession();
+  showLogin();
+  toast("Você saiu");
+}
+
+function login(){
+  const u = $("loginUser").value.trim();
+  const p = $("loginPass").value;
+  if(!u || !p){ toast("Informe usuário e senha"); return; }
+
+  const user = findUserByUsername(u);
+  if(!user){ toast("Usuário não encontrado"); return; }
+  if(!user.active){ toast("Usuário inativo"); return; }
+  if(user.password !== p){ toast("Senha incorreta"); return; }
+
+  session = { username:user.username, role:user.role };
+
+  // manter conectado?
+  if($("keepLogged").value === "sim") saveSession();
+  else clearSession();
+
+  $("pillName").textContent = user.name || user.username;
+
+  if(user.role === "admin"){
+    showAdmin();
+    initAdmin();
+  }else{
+    showOperator();
+    initOperator();
+  }
+  toast("Bem-vindo ✅");
+}
+
+/* =======================
+   ADMIN INIT
+   ======================= */
+function initAdmin(){
+  // datas padrão: mês atual
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const first = `${yyyy}-${mm}-01`;
+  $("ad_from").value = $("ad_from").value || first;
+  $("ad_to").value = $("ad_to").value || todayStr();
+
+  $("rep_from").value = $("rep_from").value || first;
+  $("rep_to").value = $("rep_to").value || todayStr();
+
+  setupAdminTabs();
+  renderMachinesTable();
+  fillMachineSelectForUsers();
+  renderUsersTable();
+  renderRecordsTable();
+  refreshAdmin();
+}
+
+/* =======================
+   FUNÇÕES GLOBAIS pro onclick
+   ======================= */
+// (necessário porque os botões da tabela chamam via onclick="")
+window.editMachine = editMachine;
+window.deleteMachine = deleteMachine;
+window.editUser = editUser;
+window.resetUserPass = resetUserPass;
+window.deleteUser = deleteUser;
+window.viewRecord = viewRecord;
+window.deleteRecord = deleteRecord;
+
+/* =======================
+   EVENTOS (UI)
+   ======================= */
+$("btnLogin").onclick = login;
+$("btnLogout").onclick = logout;
+
+$("demandType").onchange = updateDemandTypeUI;
+$("btnSaveDemand").onclick = saveDemand;
+$("btnCloseRental").onclick = closeRental;
+$("btnNextToStart").onclick = ()=>{
+  // validações leves
+  const date = $("opDate").value;
+  if(!date){ toast("Selecione a data"); return; }
+  setStep(2);
+};
+
+$("btnBackToDemand").onclick = ()=> setStep(1);
+$("btnBackToStart").onclick = ()=> setStep(2);
+
+$("opDate").onchange = ()=>{
+  // sempre que trocar a data: recarrega draft e volta pro passo correto
+  loadDraftToUIIfExists();
+  updateTurnInfo();
+  const d = getDraft(session.username, $("opDate").value);
+  setStep(d ? 3 : 1);
+};
+
+$("usePrevDemand").onchange = ()=>{
+  const prev = db.demandsByUser[session.username] || null;
+  if($("usePrevDemand").value==="sim" && prev) setDemandUI(prev);
+  else setDemandUI(null);
+};
+
+$("btnUsePrev").onclick = ()=>{
+  const prev = db.demandsByUser[session.username] || null;
+  if(!prev){ toast("Sem demanda anterior"); return; }
+  setDemandUI(prev);
+  toast("Demanda anterior aplicada");
+};
+
+$("btnNewDemand").onclick = ()=>{
+  setDemandUI(null);
+  toast("Nova demanda");
+};
+
+$("hasAvaria").onchange = ()=>{
+  const enabled = ($("hasAvaria").value === "sim");
+  setAvariaEnabled(enabled);
+  // av_cat só fica habilitado quando enabled
+  $("av_cat").disabled = !enabled;
+};
+
+$("hm_end").oninput = calcHours;
+$("hrs_stopped").oninput = ()=>{};
+$("fuel_yes").onchange = ()=>{
+  setFuelBlockVisible();
+  calcFuel();
+};
+$("fuel_liters").oninput = calcFuel;
+$("fuel_total").oninput = calcFuel;
+
+$("hm_start_photo").onchange = async ()=>{
+  const f = $("hm_start_photo").files?.[0] || null;
+  if(!f){ showPreview("hm_start_preview", null); return; }
+  const data = await fileToCompressedDataURL(f);
+  showPreview("hm_start_preview", data);
+};
+$("av_photo").onchange = async ()=>{
+  const f = $("av_photo").files?.[0] || null;
+  if(!f){ showPreview("av_preview", null); return; }
+  const data = await fileToCompressedDataURL(f);
+  showPreview("av_preview", data);
+};
+$("hm_end_photo").onchange = async ()=>{
+  const f = $("hm_end_photo").files?.[0] || null;
+  if(!f){ showPreview("hm_end_preview", null); return; }
+  const data = await fileToCompressedDataURL(f);
+  showPreview("hm_end_preview", data);
+};
+$("fuel_photo").onchange = async ()=>{
+  const f = $("fuel_photo").files?.[0] || null;
+  if(!f){ showPreview("fuel_preview", null); return; }
+  const data = await fileToCompressedDataURL(f);
+  showPreview("fuel_preview", data);
+};
+
+$("btnStartShift").onclick = startShift;
+$("btnFinishShift").onclick = finishShift;
+
+/* ADMIN: buttons */
+$("btnMachineClear").onclick = ()=>{
+  clearMachineForm();
+  toast("Limpo");
+};
+$("btnMachineSave").onclick = saveMachine;
+
+$("btnUserClear").onclick = ()=>{
+  clearUserForm();
+  toast("Limpo");
+};
+$("btnUserSave").onclick = saveUser;
+
+$("btnApplyFilters").onclick = ()=>{
+  renderRecordsTable();
+  toast("Filtro aplicado");
+};
+$("btnRefreshAdmin").onclick = ()=>{
+  refreshAdmin();
+  toast("Atualizado");
+};
+
+$("btnExportCSV").onclick = exportCSV;
+$("btnWipe").onclick = wipeAll;
+
+/* MODAL */
+$("btnModalClose").onclick = closeModal;
+$("modalBack").onclick = (e)=>{
+  if(e.target === $("modalBack")) closeModal();
+};
+document.addEventListener("keydown",(e)=>{
+  if(e.key === "Escape") closeModal();
+});
+
+/* LOGIN com Enter */
+$("loginPass").addEventListener("keydown",(e)=>{
+  if(e.key==="Enter") login();
+});
+$("loginUser").addEventListener("keydown",(e)=>{
+  if(e.key==="Enter") login();
+});
+
+/* =======================
+   BOOT
+   ======================= */
+(function boot(){
+  // garante que sempre exista admin
+  ensureAdmin();
+  saveDB();
+
+  // tenta recuperar sessão (manter conectado)
+  const s = loadSession();
+  if(s && s.username){
+    const u = findUserByUsername(s.username);
+    if(u && u.active){
+      session = { username:u.username, role:u.role };
+      $("pillName").textContent = u.name || u.username;
+      $("btnLogout").style.display = "";
+
+      if(u.role === "admin"){
+        showAdmin();
+        initAdmin();
+      }else{
+        showOperator();
+        initOperator();
+      }
+      return;
+    }else{
+      clearSession();
+    }
+  }
+
+  // padrão: tela de login
+  showLogin();
+})();
+
+
+</script>
+
+</body>
+</html>
